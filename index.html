@@ -6,6 +6,105 @@
   <title>TOEIC 600 - Dynamic Stars & Progress</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Cấu hình Firebase & Đăng nhập Google -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+    import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+    // ==============================================================
+    // THAY ĐOẠN NÀY BẰNG MÃ CONFIG TỪ DỰ ÁN 600tuvung TRÊN FIREBASE:
+    // ==============================================================
+    const firebaseConfig = {
+      apiKey: "AIzaSyD-YOUR-API-KEY",
+      authDomain: "YOUR-PROJECT-ID.firebaseapp.com",
+      projectId: "YOUR-PROJECT-ID",
+      storageBucket: "YOUR-PROJECT-ID.appspot.com",
+      messagingSenderId: "1234567890",
+      appId: "1:1234567890:web:abcdef123456"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    const provider = new GoogleAuthProvider();
+
+    window.currentUser = null;
+
+    // Bấm nút Đăng nhập Google
+    window.loginWithGoogle = async () => {
+      try {
+        await signInWithPopup(auth, provider);
+      } catch (err) {
+        console.error("Lỗi đăng nhập:", err);
+        alert("Đăng nhập thất bại: " + err.message);
+      }
+    };
+
+    // Bấm Đăng xuất
+    window.logoutGoogle = async () => {
+      await signOut(auth);
+      location.reload();
+    };
+
+    // Tự động kiểm tra trạng thái đăng nhập
+    onAuthStateChanged(auth, async (user) => {
+      window.currentUser = user;
+      const loginBtn = document.getElementById('btn-login');
+      const profile = document.getElementById('user-profile');
+      const avatar = document.getElementById('user-avatar');
+
+      if (user) {
+        if (loginBtn) loginBtn.classList.add('hidden');
+        if (profile) profile.classList.remove('hidden');
+        if (avatar) avatar.src = user.photoURL || 'https://via.placeholder.com/32';
+
+        // Tải số sao và từ đã note từ Cloud về
+        try {
+          const docRef = doc(db, "users", user.uid);
+          const docSnap = await getDoc(docRef);
+          if (docSnap.exists()) {
+            const data = docSnap.data();
+            if (data.progress) {
+              window.lessonProgress = data.progress;
+              localStorage.setItem('toeic_lesson_progress', JSON.stringify(window.lessonProgress));
+            }
+            if (data.notes) {
+              window.notedWords = data.notes;
+              localStorage.setItem('toeic_notes', JSON.stringify(window.notedWords));
+            }
+            if (typeof renderLessonGrid === 'function') renderLessonGrid();
+          } else {
+            // Lần đầu đăng nhập: lưu số sao hiện có lên cloud
+            window.syncProgressToCloud();
+          }
+        } catch (e) {
+          console.error("Lỗi tải đám mây:", e);
+        }
+      } else {
+        if (loginBtn) loginBtn.classList.remove('hidden');
+        if (profile) profile.classList.add('hidden');
+      }
+    });
+
+    // Tự động đồng bộ số sao lên đám mây
+    window.syncProgressToCloud = async () => {
+      if (!window.currentUser) return;
+      try {
+        const docRef = doc(db, "users", window.currentUser.uid);
+        await setDoc(docRef, {
+          progress: window.lessonProgress,
+          notes: window.notedWords,
+          updatedAt: new Date().toISOString()
+        }, { merge: true });
+        console.log("Đã đồng bộ lên Firebase!");
+      } catch (e) {
+        console.error("Lỗi lưu đám mây:", e);
+      }
+    };
+  </script>
+
   <style>
     body { -webkit-tap-highlight-color: transparent; user-select: none; }
     .pinyin-sub { font-size: 0.75rem; line-height: 1.1rem; color: #64748b; font-family: monospace; }
@@ -26,9 +125,22 @@
           <span>600 Từ vựng TOEIC</span>
           <i class="fa-solid fa-chevron-down text-xs text-slate-400"></i>
         </div>
-        <div class="flex items-center space-x-3 text-slate-500">
-          <i class="fa-solid fa-magnifying-glass"></i>
-          <button onclick="resetAllProgress()" title="Đặt lại tiến độ" class="hover:text-rose-500"><i class="fa-solid fa-rotate-left"></i></button>
+        
+        <!-- Khu vực nút Đồng bộ & Tài khoản -->
+        <div class="flex items-center space-x-2">
+          <!-- Nút Đồng bộ khi chưa đăng nhập -->
+          <button id="btn-login" onclick="loginWithGoogle()" class="text-xs bg-blue-50 text-blue-600 font-bold px-2.5 py-1 rounded-full border border-blue-200 hover:bg-blue-100 transition flex items-center shadow-sm">
+            <i class="fa-brands fa-google mr-1"></i> Đồng bộ
+          </button>
+          
+          <!-- Avatar khi đã đăng nhập -->
+          <div id="user-profile" class="hidden flex items-center space-x-1 cursor-pointer" onclick="if(confirm('Bạn có muốn đăng xuất khỏi tài khoản này?')) logoutGoogle();" title="Bấm để đăng xuất">
+            <img id="user-avatar" class="w-7 h-7 rounded-full border-2 border-emerald-400 object-cover" src="" alt="avatar">
+            <span class="w-2 h-2 rounded-full bg-emerald-500 inline-block" title="Đang đồng bộ trực tuyến"></span>
+          </div>
+
+          <i class="fa-solid fa-magnifying-glass text-slate-500 ml-1"></i>
+          <button onclick="resetAllProgress()" title="Đặt lại tiến độ" class="text-slate-500 hover:text-rose-500"><i class="fa-solid fa-rotate-left"></i></button>
         </div>
       </div>
 
@@ -272,20 +384,23 @@
     // ==========================================
     // LOGIC TIẾN ĐỘ & SAO (DYNAMIC STARS STORAGE)
     // ==========================================
-    // Cấu trúc lưu: { 1: { stars: 0..3, learned: true/false } }
-    let lessonProgress = JSON.parse(localStorage.getItem('toeic_lesson_progress') || '{}');
-    let notedWords = JSON.parse(localStorage.getItem('toeic_notes') || '[]');
+    window.lessonProgress = JSON.parse(localStorage.getItem('toeic_lesson_progress') || '{}');
+    window.notedWords = JSON.parse(localStorage.getItem('toeic_notes') || '[]');
 
     function saveProgress() {
-      localStorage.setItem('toeic_lesson_progress', JSON.stringify(lessonProgress));
+      localStorage.setItem('toeic_lesson_progress', JSON.stringify(window.lessonProgress));
       renderLessonGrid();
+      // Tự động đẩy lên Firebase nếu đã đăng nhập
+      if (window.syncProgressToCloud) {
+        window.syncProgressToCloud();
+      }
     }
 
     function resetAllProgress() {
       if (confirm("Bạn có chắc chắn muốn đặt lại toàn bộ số sao và tiến độ học?")) {
-        lessonProgress = {};
+        window.lessonProgress = {};
         localStorage.removeItem('toeic_lesson_progress');
-        renderLessonGrid();
+        saveProgress();
       }
     }
 
@@ -314,7 +429,7 @@
     // ==========================================
     // 1. RENDER GRID VỚI SAO VÀNG / XÁM DỰA VÀO KẾT QUẢ THẬT
     // ==========================================
-    function renderLessonGrid() {
+    window.renderLessonGrid = function() {
       const container = document.getElementById('lesson-grid');
       container.innerHTML = '';
       
@@ -322,11 +437,10 @@
       let learnedLessonsCount = 0;
 
       for (let i = 1; i <= 15; i++) {
-        const p = lessonProgress[i] || { stars: 0, learned: false };
+        const p = window.lessonProgress[i] || { stars: 0, learned: false };
         totalStars += p.stars;
         if (p.learned) learnedLessonsCount++;
 
-        // Render 3 sao: sao nào đạt thì vàng, chưa đạt thì xám
         let starsHtml = '';
         for (let s = 1; s <= 3; s++) {
           if (s <= p.stars) {
@@ -337,7 +451,6 @@
         }
 
         const btn = document.createElement('button');
-        // Nếu bài đã đạt sao thì viền xanh đậm hơn, chưa đạt thì mờ
         const borderClass = p.stars > 0 ? "border-blue-400 shadow-sm" : "border-slate-200 opacity-90";
         
         btn.className = `flex flex-col items-center justify-between p-2.5 rounded-2xl border-2 ${borderClass} bg-white hover:border-blue-400 active:scale-95 transition h-20`;
@@ -348,14 +461,13 @@
             ${starsHtml}
           </div>
         `;
-        btn.onclick = () => openLesson(0); // Tạm mở Unit 1
+        btn.onclick = () => openLesson(0);
         container.appendChild(btn);
       }
 
-      // Cập nhật header stats
       document.getElementById('total-stars-count').innerText = totalStars;
       document.getElementById('learned-words-count').innerText = learnedLessonsCount * 12;
-    }
+    };
 
     // ==========================================
     // 2. MÀN HÌNH 2: 12 TỪ TRONG BÀI
@@ -435,12 +547,11 @@
         currentWordIdx++;
         loadStudyWord();
       } else {
-        // Học xong 12 từ -> Thưởng tối thiểu 1 sao
         const lessonNum = TOEIC_LESSONS[currentLessonIdx].id;
-        if (!lessonProgress[lessonNum]) lessonProgress[lessonNum] = { stars: 0, learned: false };
-        lessonProgress[lessonNum].learned = true;
-        if (lessonProgress[lessonNum].stars < 1) {
-          lessonProgress[lessonNum].stars = 1;
+        if (!window.lessonProgress[lessonNum]) window.lessonProgress[lessonNum] = { stars: 0, learned: false };
+        window.lessonProgress[lessonNum].learned = true;
+        if (window.lessonProgress[lessonNum].stars < 1) {
+          window.lessonProgress[lessonNum].stars = 1;
         }
         saveProgress();
 
@@ -450,15 +561,16 @@
     }
 
     function toggleNoteWord() {
-      const idx = notedWords.indexOf(currentWord.id);
-      if (idx > -1) notedWords.splice(idx, 1);
-      else notedWords.push(currentWord.id);
-      localStorage.setItem('toeic_notes', JSON.stringify(notedWords));
+      const idx = window.notedWords.indexOf(currentWord.id);
+      if (idx > -1) window.notedWords.splice(idx, 1);
+      else window.notedWords.push(currentWord.id);
+      localStorage.setItem('toeic_notes', JSON.stringify(window.notedWords));
       updateBookmarkIcon();
+      if (window.syncProgressToCloud) window.syncProgressToCloud();
     }
 
     function updateBookmarkIcon() {
-      const isNoted = notedWords.includes(currentWord.id);
+      const isNoted = window.notedWords.includes(currentWord.id);
       const icon = document.querySelector('#btn-bookmark i');
       icon.className = isNoted ? "fa-solid fa-star text-amber-500" : "fa-regular fa-star text-slate-400";
     }
@@ -483,13 +595,13 @@
       practiceTasks = [];
       correctAnswersCount = 0;
 
-      // 1. Tạo 4 bài Chọn nghĩa (ảnh 5)
+      // 1. Tạo 4 bài Chọn nghĩa
       const shuffledForMeaning = [...words].sort(() => Math.random() - 0.5).slice(0, 4);
       shuffledForMeaning.forEach(w => {
         practiceTasks.push({ type: 'meaning', data: w });
       });
 
-      // 2. Tạo 3 bài Nghe điền từ vào chỗ trống (ảnh 6)
+      // 2. Tạo 3 bài Nghe điền từ vào chỗ trống
       const shuffledForGap = [...words].sort(() => Math.random() - 0.5).slice(0, 3);
       shuffledForGap.forEach(w => {
         practiceTasks.push({
@@ -504,7 +616,7 @@
         });
       });
 
-      // 3. Tạo 1 bài Ghép cặp âm thanh (ảnh 7) gồm 4 từ
+      // 3. Tạo 1 bài Ghép cặp âm thanh gồm 4 từ
       const shuffledForMatch = [...words].sort(() => Math.random() - 0.5).slice(0, 4);
       practiceTasks.push({
         type: 'match',
@@ -512,7 +624,7 @@
       });
 
       practiceTasks.sort(() => Math.random() - 0.5);
-      totalQuestionsCount = practiceTasks.length; // 8 bài tập
+      totalQuestionsCount = practiceTasks.length;
       currentTaskIdx = 0;
 
       showScreen('screen-practice-wrapper');
@@ -526,7 +638,6 @@
       document.getElementById('part-quiz-finish').classList.add('hidden');
 
       if (currentTaskIdx >= practiceTasks.length) {
-        // TÍNH ĐIỂM VÀ TÍNH SAO THỰC TẾ
         const percent = Math.round((correctAnswersCount / totalQuestionsCount) * 100);
         let awardedStars = 1;
         if (percent >= 85) {
@@ -535,15 +646,13 @@
           awardedStars = 2;
         }
 
-        // Cập nhật điểm cao nhất của bài
         const lessonNum = TOEIC_LESSONS[currentLessonIdx].id;
-        if (!lessonProgress[lessonNum]) lessonProgress[lessonNum] = { stars: 0, learned: true };
-        if (awardedStars > lessonProgress[lessonNum].stars) {
-          lessonProgress[lessonNum].stars = awardedStars;
+        if (!window.lessonProgress[lessonNum]) window.lessonProgress[lessonNum] = { stars: 0, learned: true };
+        if (awardedStars > window.lessonProgress[lessonNum].stars) {
+          window.lessonProgress[lessonNum].stars = awardedStars;
         }
         saveProgress();
 
-        // Hiển thị sao trên màn hình tổng kết
         let starIcons = '';
         for (let s = 1; s <= 3; s++) {
           if (s <= awardedStars) starIcons += `<i class="fa-solid fa-star text-amber-400"></i>`;
