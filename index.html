@@ -13,16 +13,15 @@
     import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
     import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-    // ==============================================================
-    // THAY ĐOẠN NÀY BẰNG MÃ CONFIG TỪ DỰ ÁN 600tuvung TRÊN FIREBASE:
-    // ==============================================================
+    // Firebase config của bạn
     const firebaseConfig = {
-      apiKey: "AIzaSyD-YOUR-API-KEY",
-      authDomain: "YOUR-PROJECT-ID.firebaseapp.com",
-      projectId: "YOUR-PROJECT-ID",
-      storageBucket: "YOUR-PROJECT-ID.appspot.com",
-      messagingSenderId: "1234567890",
-      appId: "1:1234567890:web:abcdef123456"
+      apiKey: "AIzaSyCizgsPFGkkdbVYl4VAqfggphPvM4l6AnQ",
+      authDomain: "tuvung-ba736.firebaseapp.com",
+      projectId: "tuvung-ba736",
+      storageBucket: "tuvung-ba736.firebasestorage.app",
+      messagingSenderId: "283132513140",
+      appId: "1:283132513140:web:a388c1171785d7cfe4fa21",
+      measurementId: "G-KX30813EGG"
     };
 
     const app = initializeApp(firebaseConfig);
