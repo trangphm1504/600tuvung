@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>N4 Daichi 2 - Từ vựng & Ngữ pháp</title>
+  <title>N4 Daichi 2 - Lộ trình từng Cửa ải</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   
-  <!-- Cấu hình Firebase & Đồng bộ dữ liệu -->
+  <!-- Firebase Auth & Firestore Sync -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
     import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
@@ -59,9 +59,9 @@
           const docSnap = await getDoc(docRef);
           if (docSnap.exists()) {
             const data = docSnap.data();
-            if (data.japaneseProgress) {
-              window.jaProgress = data.japaneseProgress;
-              localStorage.setItem('daichi_lesson_progress', JSON.stringify(window.jaProgress));
+            if (data.daichiStageProgress) {
+              window.stageProgress = data.daichiStageProgress;
+              localStorage.setItem('daichi_stage_progress', JSON.stringify(window.stageProgress));
             }
             if (typeof renderLessonGrid === 'function') renderLessonGrid();
           } else {
@@ -81,7 +81,7 @@
       try {
         const docRef = doc(db, "users", window.currentUser.uid);
         await setDoc(docRef, {
-          japaneseProgress: window.jaProgress,
+          daichiStageProgress: window.stageProgress,
           updatedAt: new Date().toISOString()
         }, { merge: true });
       } catch (e) {
@@ -100,11 +100,10 @@
   <div class="w-full max-w-md bg-white min-h-screen flex flex-col justify-between shadow-2xl relative overflow-x-hidden">
 
     <!-- ========================================== -->
-    <!-- MÀN HÌNH 1: DANH SÁCH BÀI HỌC (DAICHI 2) -->
+    <!-- MÀN HÌNH 1: TỔNG QUAN CÁC BÀI HỌC (23 ~ 42) -->
     <!-- ========================================== -->
     <div id="screen-lessons" class="flex-1 flex flex-col">
       <div class="px-5 pt-8 pb-4 flex items-center justify-between border-b border-slate-100">
-        <!-- Nút nhảy về file TOEIC Tiếng Anh -->
         <a href="index.html" class="text-xs bg-amber-50 text-amber-700 font-bold px-2.5 py-1.5 rounded-full border border-amber-200 hover:bg-amber-100 transition flex items-center shadow-sm">
           <i class="fa-solid fa-arrow-left mr-1"></i> TOEIC
         </a>
@@ -126,50 +125,66 @@
         </div>
       </div>
 
-      <!-- Banner tổng quan Daichi 2 -->
+      <!-- Banner tổng quan -->
       <div class="p-4">
         <div class="bg-red-50/70 border border-red-100 rounded-2xl p-4 flex items-center space-x-4">
           <div class="w-16 h-16 bg-red-500 rounded-2xl flex items-center justify-center text-white text-2xl font-extrabold shadow-md shadow-red-500/30">
             日
           </div>
           <div>
-            <h3 class="font-bold text-slate-900 text-base">大地 2 - Tiếng Nhật N4</h3>
-            <p class="text-xs text-slate-500 mt-0.5">20 bài học (Bài 23 ~ Bài 42)</p>
+            <h3 class="font-bold text-slate-900 text-base">大地 2 (Daichi N4)</h3>
+            <p class="text-xs text-slate-500 mt-0.5">Tự động chia chặng 15 từ/cửa</p>
             <div class="flex items-center space-x-3 mt-2 text-xs font-semibold">
               <span class="text-red-600 flex items-center"><i class="fa-solid fa-book-open mr-1"></i> Bài 23 ~ 42</span>
-              <span class="text-amber-500 flex items-center"><i class="fa-solid fa-star mr-1"></i> <span id="total-stars-count">0</span>/60 sao</span>
+              <span class="text-amber-500 flex items-center"><i class="fa-solid fa-star mr-1"></i> <span id="total-stars-count">0</span> sao</span>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Lưới bài học: Bài 23 đến 42 -->
+      <!-- Grid các bài từ 23 đến 42 -->
       <div class="px-4 flex-1">
         <div class="text-xs font-bold text-red-500 flex items-center mb-3">
-          <span class="w-2 h-2 rounded-full bg-red-500 mr-1.5"></span> Danh sách bài học (第23課 ~ 第42課)
+          <span class="w-2 h-2 rounded-full bg-red-500 mr-1.5"></span> Danh sách bài học
         </div>
         <div class="grid grid-cols-5 gap-3" id="lesson-grid"></div>
-      </div>
-
-      <div class="p-4">
-        <button onclick="openLesson(0)" class="w-full py-3.5 bg-red-500 hover:bg-red-600 text-white font-bold rounded-2xl shadow-lg shadow-red-500/30 transition">
-          Vào học bài tiếp theo
-        </button>
       </div>
     </div>
 
     <!-- ========================================== -->
-    <!-- MÀN HÌNH 2: DANH SÁCH TỪ TRONG BÀI -->
+    <!-- MÀN HÌNH 2: DANH SÁCH CỬA ẢI TRONG 1 BÀI HỌC -->
     <!-- ========================================== -->
-    <div id="screen-detail" class="hidden flex-1 flex flex-col bg-white">
-      <div class="px-5 pt-8 pb-3 flex items-center border-b border-slate-100">
-        <button onclick="showScreen('screen-lessons')" class="text-slate-600 text-lg mr-4">
-          <i class="fa-solid fa-chevron-left"></i>
-        </button>
-        <h2 id="detail-title" class="font-bold text-slate-900 text-lg">第23課</h2>
+    <div id="screen-stages" class="hidden flex-1 flex flex-col bg-white">
+      <div class="px-5 pt-8 pb-3 flex items-center justify-between border-b border-slate-100">
+        <div class="flex items-center">
+          <button onclick="showScreen('screen-lessons')" class="text-slate-600 text-lg mr-3">
+            <i class="fa-solid fa-chevron-left"></i>
+          </button>
+          <h2 id="stages-lesson-title" class="font-bold text-slate-900 text-lg">第23課</h2>
+        </div>
+        <span id="stages-count-badge" class="text-xs font-bold bg-red-50 text-red-600 px-2 py-1 rounded-full"></span>
       </div>
 
-      <div class="px-5 py-3 text-sm text-slate-400 font-medium">Danh sách từ vựng trọng tâm</div>
+      <div class="px-5 py-3 text-xs text-slate-400 font-medium">Mỗi cửa tối đa 15 từ giúp học nhanh, nhớ sâu</div>
+
+      <div class="flex-1 overflow-y-auto px-5 py-2 space-y-3" id="stage-cards-container">
+        <!-- Render các chặng con -->
+      </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- MÀN HÌNH 3: CHI TIẾT TỪ TRONG CỬA ẢI ĐÃ CHỌN -->
+    <!-- ========================================== -->
+    <div id="screen-stage-detail" class="hidden flex-1 flex flex-col bg-white">
+      <div class="px-5 pt-8 pb-3 flex items-center border-b border-slate-100">
+        <button onclick="showScreen('screen-stages')" class="text-slate-600 text-lg mr-4">
+          <i class="fa-solid fa-chevron-left"></i>
+        </button>
+        <div>
+          <h2 id="detail-stage-name" class="font-bold text-slate-900 text-base">Cửa 1</h2>
+          <p id="detail-stage-desc" class="text-xs text-slate-400">15 từ vựng</p>
+        </div>
+      </div>
 
       <div class="flex-1 overflow-y-auto px-5 divide-y divide-slate-100" id="detail-word-list"></div>
 
@@ -184,7 +199,7 @@
     </div>
 
     <!-- ========================================== -->
-    <!-- MÀN HÌNH 3: HỌC TỪ (FLIP/TTS) -->
+    <!-- MÀN HÌNH 4: CHẾ ĐỘ HỌC TỪ (FLIP / TTS) -->
     <!-- ========================================== -->
     <div id="screen-study" class="hidden flex-1 flex flex-col justify-between bg-white">
       <div>
@@ -192,7 +207,7 @@
           <div id="study-progress-bar" class="h-full bg-red-500 transition-all duration-300 w-0"></div>
         </div>
         <div class="px-5 py-3 flex items-center justify-between text-slate-400">
-          <button onclick="showScreen('screen-detail')" class="hover:text-slate-600 text-base"><i class="fa-solid fa-pause"></i></button>
+          <button onclick="showScreen('screen-stage-detail')" class="hover:text-slate-600 text-base"><i class="fa-solid fa-pause"></i></button>
           <div class="flex items-center space-x-4">
             <button onclick="toggleSlowSpeed()" id="btn-tortoise" class="hover:text-red-500 transition text-base"><i class="fa-solid fa-shield-cat"></i></button>
           </div>
@@ -243,7 +258,7 @@
     </div>
 
     <!-- ========================================== -->
-    <!-- MÀN HÌNH 4: LUYỆN TẬP KẾT HỢP -->
+    <!-- MÀN HÌNH 5: LUYỆN TẬP PHẢN XẠ -->
     <!-- ========================================== -->
     <div id="screen-practice-wrapper" class="hidden flex-1 flex flex-col justify-between bg-white">
       <div>
@@ -251,7 +266,7 @@
           <div id="practice-progress-bar" class="h-full bg-red-500 transition-all duration-300 w-0"></div>
         </div>
         <div class="px-5 py-4 flex items-center justify-between text-slate-400">
-          <button onclick="showScreen('screen-detail')"><i class="fa-solid fa-pause"></i></button>
+          <button onclick="showScreen('screen-stage-detail')"><i class="fa-solid fa-pause"></i></button>
           <span id="practice-header-title" class="text-xs font-bold text-slate-500 uppercase tracking-wider">Luyện tập</span>
           <span id="practice-counter" class="text-xs font-bold text-red-600">1/6</span>
         </div>
@@ -266,7 +281,7 @@
         <div class="space-y-3 mb-4" id="pq1-options"></div>
       </div>
 
-      <!-- VÙNG 2: NGHE ĐIỀN CÂU NGỮ PHÁP -->
+      <!-- VÙNG 2: NGHE ĐIỀN CÂU VÍ DỤ -->
       <div id="part-quiz-gap" class="hidden flex-1 flex flex-col justify-between px-6 py-4">
         <div class="flex-1 flex flex-col items-center justify-center">
           <button onclick="speakJapanese(currentGapTaskData.fullJa)" class="w-20 h-20 bg-rose-500 hover:bg-rose-600 active:scale-95 text-white rounded-full flex items-center justify-center text-3xl shadow-lg shadow-rose-500/30 transition mb-6">
@@ -288,7 +303,7 @@
         <h2 class="text-2xl font-black text-slate-900" id="finish-title">Hoàn thành bài tập!</h2>
         <div class="flex items-center justify-center space-x-2 my-3 text-3xl" id="finish-stars"></div>
         <p class="text-sm text-slate-500 mt-1" id="finish-score-desc"></p>
-        <button onclick="finishAndBackToLessons()" class="mt-8 w-full py-3.5 bg-red-500 hover:bg-red-600 text-white font-bold rounded-2xl shadow-lg transition">
+        <button onclick="finishAndBackToStages()" class="mt-8 w-full py-3.5 bg-red-500 hover:bg-red-600 text-white font-bold rounded-2xl shadow-lg transition">
           Xác nhận & Lưu tiến độ
         </button>
       </div>
@@ -298,41 +313,60 @@
 
   <script>
     // ==========================================
-    // DỮ LIỆU TỪ VỰNG BÀI 23 - GIÁO TRÌNH DAICHI 2 (N4)
+    // DỮ LIỆU ĐẦY ĐỦ BÀI 23 - GIÁO TRÌNH DAICHI 2 (N4)
     // ==========================================
     const JAPANESE_LESSONS = [
       {
         id: 23,
-        title: "第23課 - Sự biến đổi trạng thái & Điều kiện と",
+        title: "第23課",
         words: [
-          { id: 2301, kanji: "なる", furigana: "なる", pos: "Động từ nhóm I", meaning: "trở thành, trở nên", example: { ja: "春になると、暖かくなります。", reading: "はるになると、あたたかくなります。", vi: "Hễ đến mùa xuân thì trời trở nên ấm áp." } },
-          { id: 2302, kanji: "開く", furigana: "あく", pos: "Tự động từ nhóm I", meaning: "mở (cửa tự mở)", example: { ja: "ボタンを押すと、ドアが開きます。", reading: "ボタンをおすと、ドアがあきます。", vi: "Ấn cái nút này là cửa tự mở ra." } },
-          { id: 2303, kanji: "つく", furigana: "つく", pos: "Tự động từ nhóm I", meaning: "(đèn) được bật sáng", example: { ja: "電気がつきました。", reading: "でんきがつきました。", vi: "Đèn đã bật sáng." } },
-          { id: 2304, kanji: "曲がる", furigana: "まがる", pos: "Động từ nhóm I", meaning: "quẹo, rẽ", example: { ja: "右へ曲がると、郵便局があります。", reading: "みぎへまがると、ゆうびんきょくがあります。", vi: "Rẽ sang bên phải là thấy bưu điện." } },
-          { id: 2305, kanji: "渡る", furigana: "わたる", pos: "Động từ nhóm I", meaning: "băng qua (cầu, đường)", example: { ja: "あの交差点を渡ります。", reading: "あのおうだんほどうをわたります。", vi: "Băng qua ngã tư đằng kia." } },
-          { id: 2306, kanji: "消える", furigana: "きえる", pos: "Tự động từ nhóm II", meaning: "(đèn, lửa) tắt", example: { ja: "電気が消えました。", reading: "でんきがきえました。", vi: "Đèn điện bị tắt." } },
-          { id: 2307, kanji: "聞こえる", furigana: "きこえる", pos: "Động từ nhóm II", meaning: "nghe thấy (tự nhiên lọt vào tai)", example: { ja: "鳥の声が聞こえます。", reading: "とりのこえがきこえます。", vi: "Nghe thấy tiếng chim hót." } },
-          { id: 2308, kanji: "汚い", furigana: "きたない", pos: "Tính từ đuôi い", meaning: "dơ bẩn", example: { ja: "部屋が汚くなりました。", reading: "へやがきたなくなりました。", vi: "Căn phòng đã trở nên dơ bẩn." } },
-          { id: 2309, kanji: "丈夫[な]", furigana: "じょうぶ[な]", pos: "Tính từ đuôi な", meaning: "bền, rắn chắc", example: { ja: "この靴は丈夫です。", reading: "このくつはじょうぶです。", vi: "Đôi giày này rất bền chắc." } },
-          { id: 2310, kanji: "まっすぐ", furigana: "まっすぐ", pos: "Phó từ", meaning: "thẳng (đi thẳng)", example: { ja: "まっすぐ行くと、駅があります。", reading: "まっすぐいくと、えきがあります。", vi: "Đi thẳng là tới nhà ga." } },
-          { id: 2311, kanji: "交差点", furigana: "こうさてん", pos: "Danh từ", meaning: "ngã tư, giao lộ", example: { ja: "交差点を右に曲がります。", reading: "こうさてんをみぎにまがります。", vi: "Rẽ phải ở ngã tư." } },
-          { id: 2312, kanji: "季節", furigana: "きせつ", pos: "Danh từ", meaning: "mùa", example: { ja: "一番いい季節は春です。", reading: "いちばんいいきせつははるです。", vi: "Mùa dễ chịu nhất là mùa xuân." } }
+          { id: 2301, kanji: "なる", furigana: "なる", pos: "Động từ I", meaning: "trở thành, trở nên", example: { ja: "春になると、暖かくなります。", reading: "はるになると、あたたかくなります。", vi: "Hễ mùa xuân đến thì trời trở nên ấm áp." } },
+          { id: 2302, kanji: "開く", furigana: "あく", pos: "Tự động từ I", meaning: "mở (cửa tự mở)", example: { ja: "ボタンを押すと、ドアが開きます。", reading: "ボタンをおすと、ドアがあきます。", vi: "Ấn nút này là cửa tự mở." } },
+          { id: 2303, kanji: "つく", furigana: "つく", pos: "Tự động từ I", meaning: "(đèn) được bật sáng", example: { ja: "電気がつきました。", reading: "でんきがつきました。", vi: "Đèn đã bật sáng." } },
+          { id: 2304, kanji: "曲がる", furigana: "まがる", pos: "Động từ I", meaning: "quẹo, rẽ", example: { ja: "右へ曲がると、郵便局があります。", reading: "みぎへまがると、ゆうびんきょくがあります。", vi: "Rẽ sang phải là có bưu điện." } },
+          { id: 2305, kanji: "渡る", furigana: "わたる", pos: "Động từ I", meaning: "băng qua (cầu, đường)", example: { ja: "あの交差点を渡ります。", reading: "あのおうだんほどうをわたります。", vi: "Băng qua ngã tư đằng kia." } },
+          { id: 2306, kanji: "続く", furigana: "つづく", pos: "Tự động từ I", meaning: "tiếp tục, kéo dài", example: { ja: "雨がまだ続いています。", reading: "あめがまだつづいています。", vi: "Trời vẫn tiếp tục mưa." } },
+          { id: 2307, kanji: "出る", furigana: "でる", pos: "Động từ II", meaning: "ra, chảy ra, xuất hiện", example: { ja: "お茶が出ます。", reading: "おちゃがでます。", vi: "Nước trà chảy ra." } },
+          { id: 2308, kanji: "流れる", furigana: "ながれる", pos: "Động từ II", meaning: "chảy, trôi, lan ra", example: { ja: "川の水が流れています。", reading: "かわのみずがながれています。", vi: "Nước sông đang chảy." } },
+          { id: 2309, kanji: "消える", furigana: "きえる", pos: "Tự động từ II", meaning: "(đèn, lửa) tắt", example: { ja: "電気が消えました。", reading: "でんきがきえました。", vi: "Đèn điện bị tắt." } },
+          { id: 2310, kanji: "預ける", furigana: "あずける", pos: "Động từ II", meaning: "gửi giữ giùm, cất giữ", example: { ja: "荷物をホテルに預けます。", reading: "にもつをホテルにあずけます。", vi: "Gửi hành lý ở khách sạn." } },
+          { id: 2311, kanji: "聞こえる", furigana: "きこえる", pos: "Động từ II", meaning: "nghe thấy (tự nhiên lọt vào tai)", example: { ja: "鳥の声が聞こえます。", reading: "とりのこえがきこえます。", vi: "Nghe thấy tiếng chim hót." } },
+          { id: 2312, kanji: "汚い", furigana: "きたない", pos: "Tính từ い", meaning: "dơ bẩn", example: { ja: "部屋が汚くなりました。", reading: "へやがきたなくなりました。", vi: "Căn phòng trở nên dơ bẩn." } },
+          { id: 2313, kanji: "丈夫[な]", furigana: "じょうぶ[な]", pos: "Tính từ な", meaning: "bền, rắn chắc", example: { ja: "この靴は丈夫です。", reading: "このくつはじょうぶです。", vi: "Đôi giày này rất bền chắc." } },
+          { id: 2314, kanji: "久しぶり", furigana: "ひさしぶり", pos: "Cụm từ", meaning: "lâu không gặp", example: { ja: "お久しぶりですね。", reading: "おひさしぶりですね。", vi: "Đã lâu không gặp bạn nhỉ." } },
+          { id: 2315, kanji: "まっすぐ", furigana: "まっすぐ", pos: "Phó từ", meaning: "thẳng (đi thẳng)", example: { ja: "まっすぐ行くと、駅があります。", reading: "まっすぐいくと、えきがあります。", vi: "Đi thẳng là tới nhà ga." } },
+          { id: 2316, kanji: "実は", furigana: "じつは", pos: "Phó từ", meaning: "thực ra là (giải thích lý do)", example: { ja: "実は、引っ越しをしました。", reading: "じつは、ひっこしをしました。", vi: "Thực ra là tôi vừa mới chuyển nhà." } },
+          { id: 2317, kanji: "だんだん", furigana: "だんだん", pos: "Phó từ", meaning: "dần dần, từ từ", example: { ja: "だんだん暖かくなります。", reading: "だんだんあたたかくなります。", vi: "Trời dần dần ấm lên." } },
+          { id: 2318, kanji: "ペットボトル", furigana: "ペットボトル", pos: "Danh từ", meaning: "chai nhựa, chai nước suối", example: { ja: "ペットボトルをリサイクルします。", reading: "ペットボトルをリサイクルします。", vi: "Tái chế chai nhựa." } },
+          { id: 2319, kanji: "リサイクル", furigana: "リサイクル", pos: "Danh từ", meaning: "tái chế", example: { ja: "リサイクル工場へ行きます。", reading: "リサイクルこうじょうへいきます。", vi: "Đến nhà máy tái chế." } },
+          { id: 2320, kanji: "定期券", furigana: "ていきけん", pos: "Danh từ", meaning: "vé định kỳ (vé tháng tàu xe)", example: { ja: "定期券を見せてください。", reading: "ていきけんをみせてください。", vi: "Vui lòng xuất trình vé tháng." } },
+          { id: 2321, kanji: "道路", furigana: "どうろ", pos: "Danh từ", meaning: "đường lộ, đường xá", example: { ja: "道路を渡ります。", reading: "どうろをわたります。", vi: "Băng qua đường lộ." } },
+          { id: 2322, kanji: "材料", furigana: "ざいりょう", pos: "Danh từ", meaning: "nguyên vật liệu chế biến", example: { ja: "料理の材料を買います。", reading: "りょうりのざいりょうをかいます。", vi: "Mua nguyên liệu nấu ăn." } },
+          { id: 2323, kanji: "ボタン", furigana: "ボタン", pos: "Danh từ", meaning: "nút bấm", example: { ja: "ボタンを押してください。", reading: "ボタンをおしてください。", vi: "Xin hãy ấn nút bấm." } },
+          { id: 2324, kanji: "交差点", furigana: "こうさてん", pos: "Danh từ", meaning: "ngã tư, giao lộ", example: { ja: "交差点を右に曲がります。", reading: "こうさてんをみぎにまがります。", vi: "Rẽ phải ở ngã tư." } },
+          { id: 2325, kanji: "季節", furigana: "きせつ", pos: "Danh từ", meaning: "mùa", example: { ja: "好きな季節は秋です。", reading: "すきなきせつはあきです。", vi: "Mùa tôi thích là mùa thu." } },
+          { id: 2326, kanji: "雨季", furigana: "うき", pos: "Danh từ", meaning: "mùa mưa", example: { ja: "6月は雨季です。", reading: "ろくがつはうきです。", vi: "Tháng 6 là mùa mưa." } },
+          { id: 2327, kanji: "乾季", furigana: "かんき", pos: "Danh từ", meaning: "mùa khô", example: { ja: "乾季は雨が降りません。", reading: "かんきはあめがふりません。", vi: "Mùa khô thì không có mưa." } }
         ]
       }
     ];
 
-    window.jaProgress = JSON.parse(localStorage.getItem('daichi_lesson_progress') || '{}');
+    // CẤU HÌNH BĂM NHỎ: Mỗi cửa tối đa 15 từ
+    const WORDS_PER_STAGE = 15;
+
+    // Lưu trữ số sao của từng chặng: { "23_1": 3, "23_2": 2 }
+    window.stageProgress = JSON.parse(localStorage.getItem('daichi_stage_progress') || '{}');
 
     function saveProgress() {
-      localStorage.setItem('daichi_lesson_progress', JSON.stringify(window.jaProgress));
+      localStorage.setItem('daichi_stage_progress', JSON.stringify(window.stageProgress));
       renderLessonGrid();
       if (window.syncProgressToCloud) window.syncProgressToCloud();
     }
 
     function resetAllProgress() {
-      if (confirm("Đặt lại toàn bộ tiến trình học tiếng Nhật?")) {
-        window.jaProgress = {};
-        localStorage.removeItem('daichi_lesson_progress');
+      if (confirm("Đặt lại toàn bộ tiến trình học Daichi 2?")) {
+        window.stageProgress = {};
+        localStorage.removeItem('daichi_stage_progress');
         saveProgress();
       }
     }
@@ -356,55 +390,105 @@
     }
 
     function showScreen(screenId) {
-      ['screen-lessons', 'screen-detail', 'screen-study', 'screen-practice-wrapper'].forEach(id => {
+      ['screen-lessons', 'screen-stages', 'screen-stage-detail', 'screen-study', 'screen-practice-wrapper'].forEach(id => {
         document.getElementById(id).classList.add('hidden');
       });
       document.getElementById(screenId).classList.remove('hidden');
     }
 
-    // Render 20 bài từ Bài 23 đến 42
+    // 1. RENDER MÀN HÌNH CHÍNH (Bài 23 -> 42)
     window.renderLessonGrid = function() {
       const container = document.getElementById('lesson-grid');
       container.innerHTML = '';
       let totalStars = 0;
 
       for (let i = 23; i <= 42; i++) {
-        const p = window.jaProgress[i] || { stars: 0 };
-        totalStars += p.stars;
-
-        let starsHtml = '';
-        for (let s = 1; s <= 3; s++) {
-          if (s <= p.stars) starsHtml += `<i class="fa-solid fa-star text-amber-400"></i>`;
-          else starsHtml += `<i class="fa-solid fa-star text-slate-200"></i>`;
+        // Tính tổng sao của bài bằng tổng sao các stage thuộc bài đó
+        let lessonStars = 0;
+        for (let s = 1; s <= 5; s++) {
+          lessonStars += window.stageProgress[`${i}_${s}`] || 0;
         }
+        totalStars += lessonStars;
 
         const btn = document.createElement('button');
-        const borderClass = p.stars > 0 ? "border-red-400 shadow-sm" : "border-slate-200 opacity-90";
+        const borderClass = lessonStars > 0 ? "border-red-400 shadow-sm" : "border-slate-200 opacity-90";
         btn.className = `flex flex-col items-center justify-between p-2.5 rounded-2xl border-2 ${borderClass} bg-white hover:border-red-400 active:scale-95 transition h-20`;
         btn.innerHTML = `
           <div class="w-full flex justify-end"><span class="text-[9px] font-bold bg-red-500 text-white rounded px-1">N4</span></div>
           <span class="text-base font-bold text-red-600">${i}</span>
-          <div class="text-[9px] flex space-x-0.5">${starsHtml}</div>
+          <div class="text-[10px] text-amber-500 font-bold flex items-center">
+            <i class="fa-solid fa-star text-[9px] mr-0.5"></i> ${lessonStars}
+          </div>
         `;
-        btn.onclick = () => openLesson(0);
+        btn.onclick = () => openLessonStages(i);
         container.appendChild(btn);
       }
       document.getElementById('total-stars-count').innerText = totalStars;
     };
 
-    let currentLessonIdx = 0;
-    let currentWordIdx = 0;
-    let currentWord = null;
+    // 2. MỞ DANH SÁCH CÁC CỬA CON CỦA BÀI HỌC
+    let selectedLessonId = 23;
+    let currentStageIndex = 0;
+    let currentStageWords = [];
 
-    function openLesson(idx) {
-      currentLessonIdx = idx;
-      const lesson = JAPANESE_LESSONS[idx];
-      document.getElementById('detail-title').innerText = lesson.title;
+    function openLessonStages(lessonId) {
+      selectedLessonId = lessonId;
+      const lesson = JAPANESE_LESSONS.find(l => l.id === lessonId) || JAPANESE_LESSONS[0];
+      
+      document.getElementById('stages-lesson-title').innerText = `第${lesson.id}課`;
+      document.getElementById('stages-count-badge').innerText = `${lesson.words.length} từ vựng`;
+
+      const stagesContainer = document.getElementById('stage-cards-container');
+      stagesContainer.innerHTML = '';
+
+      // Tự động chia bài thành các chặng 15 từ
+      const totalStages = Math.ceil(lesson.words.length / WORDS_PER_STAGE);
+
+      for (let s = 0; s < totalStages; s++) {
+        const startIdx = s * WORDS_PER_STAGE;
+        const endIdx = Math.min(startIdx + WORDS_PER_STAGE, lesson.words.length);
+        const stageWords = lesson.words.slice(startIdx, endIdx);
+        const stageKey = `${lesson.id}_${s + 1}`;
+        const stars = window.stageProgress[stageKey] || 0;
+
+        let starsHtml = '';
+        for (let star = 1; star <= 3; star++) {
+          starsHtml += star <= stars ? `<i class="fa-solid fa-star text-amber-400"></i>` : `<i class="fa-solid fa-star text-slate-200"></i>`;
+        }
+
+        const card = document.createElement('div');
+        card.className = "p-4 rounded-2xl border-2 border-slate-100 hover:border-red-300 bg-slate-50 flex items-center justify-between cursor-pointer transition shadow-sm";
+        card.onclick = () => openStageDetail(s, stageWords);
+        card.innerHTML = `
+          <div class="flex items-center space-x-3.5">
+            <div class="w-11 h-11 bg-white border border-red-200 text-red-600 rounded-xl flex items-center justify-center font-black text-base shadow-sm">
+              ${s + 1}
+            </div>
+            <div>
+              <h4 class="font-bold text-slate-800 text-sm">Cửa số ${s + 1} (Từ ${startIdx + 1} ~ ${endIdx})</h4>
+              <p class="text-xs text-slate-400 mt-0.5">Quy mô: ${stageWords.length} từ</p>
+            </div>
+          </div>
+          <div class="text-sm flex space-x-1">${starsHtml}</div>
+        `;
+        stagesContainer.appendChild(card);
+      }
+
+      showScreen('screen-stages');
+    }
+
+    // 3. MỞ CHI TIẾT CỬA ĐÃ CHỌN
+    function openStageDetail(stageIdx, words) {
+      currentStageIndex = stageIdx;
+      currentStageWords = words;
+
+      document.getElementById('detail-stage-name').innerText = `Cửa số ${stageIdx + 1} - 第${selectedLessonId}課`;
+      document.getElementById('detail-stage-desc').innerText = `Danh sách ${words.length} từ vựng mục tiêu`;
 
       const listContainer = document.getElementById('detail-word-list');
       listContainer.innerHTML = '';
 
-      lesson.words.forEach(w => {
+      words.forEach(w => {
         const row = document.createElement('div');
         row.className = "py-3 flex flex-col justify-center";
         row.innerHTML = `
@@ -414,8 +498,13 @@
         `;
         listContainer.appendChild(row);
       });
-      showScreen('screen-detail');
+
+      showScreen('screen-stage-detail');
     }
+
+    // 4. HỌC TỪ
+    let currentWordIdx = 0;
+    let currentWord = null;
 
     function startLearningMode() {
       currentWordIdx = 0;
@@ -424,10 +513,8 @@
     }
 
     function loadStudyWord() {
-      const words = JAPANESE_LESSONS[currentLessonIdx].words;
-      currentWord = words[currentWordIdx];
-
-      const percent = ((currentWordIdx + 1) / words.length) * 100;
+      currentWord = currentStageWords[currentWordIdx];
+      const percent = ((currentWordIdx + 1) / currentStageWords.length) * 100;
       document.getElementById('study-progress-bar').style.width = `${percent}%`;
 
       document.getElementById('study-furigana').innerText = currentWord.furigana;
@@ -454,36 +541,33 @@
     }
 
     function nextStudyWord() {
-      const words = JAPANESE_LESSONS[currentLessonIdx].words;
-      if (currentWordIdx < words.length - 1) {
+      if (currentWordIdx < currentStageWords.length - 1) {
         currentWordIdx++;
         loadStudyWord();
       } else {
-        const lessonNum = JAPANESE_LESSONS[currentLessonIdx].id;
-        if (!window.jaProgress[lessonNum]) window.jaProgress[lessonNum] = { stars: 0 };
-        if (window.jaProgress[lessonNum].stars < 1) window.jaProgress[lessonNum].stars = 1;
+        const stageKey = `${selectedLessonId}_${currentStageIndex + 1}`;
+        if (!window.stageProgress[stageKey]) window.stageProgress[stageKey] = 1;
         saveProgress();
-        alert("Bạn đã học xong từ vựng Bài 23! Nhận ⭐ 1 SAO. Tiếp tục luyện tập để đạt 3 sao!");
+        alert("Đã xem qua hết từ của cửa này! Đạt ⭐ 1 SAO. Hãy vào Luyện tập để lấy 3 sao nhé!");
         startCombinedPractice();
       }
     }
 
-    // Luyện tập
+    // 5. LUYỆN TẬP
     let practiceTasks = [];
     let currentTaskIdx = 0;
     let correctAnswersCount = 0;
 
     function startCombinedPractice() {
-      const words = JAPANESE_LESSONS[currentLessonIdx].words;
       practiceTasks = [];
       correctAnswersCount = 0;
 
       // 4 câu chọn nghĩa
-      const shuffledMeaning = [...words].sort(() => Math.random() - 0.5).slice(0, 4);
+      const shuffledMeaning = [...currentStageWords].sort(() => Math.random() - 0.5).slice(0, 4);
       shuffledMeaning.forEach(w => practiceTasks.push({ type: 'meaning', data: w }));
 
       // 2 câu nghe điền câu ví dụ ngữ pháp
-      const shuffledGap = [...words].sort(() => Math.random() - 0.5).slice(0, 2);
+      const shuffledGap = [...currentStageWords].sort(() => Math.random() - 0.5).slice(0, 2);
       shuffledGap.forEach(w => {
         practiceTasks.push({
           type: 'gap',
@@ -513,10 +597,9 @@
         const percent = Math.round((correctAnswersCount / practiceTasks.length) * 100);
         let awardedStars = percent >= 80 ? 3 : (percent >= 60 ? 2 : 1);
 
-        const lessonNum = JAPANESE_LESSONS[currentLessonIdx].id;
-        if (!window.jaProgress[lessonNum]) window.jaProgress[lessonNum] = { stars: 0 };
-        if (awardedStars > window.jaProgress[lessonNum].stars) {
-          window.jaProgress[lessonNum].stars = awardedStars;
+        const stageKey = `${selectedLessonId}_${currentStageIndex + 1}`;
+        if (awardedStars > (window.stageProgress[stageKey] || 0)) {
+          window.stageProgress[stageKey] = awardedStars;
         }
         saveProgress();
 
@@ -546,10 +629,9 @@
       document.getElementById('pq1-kanji').innerText = wordObj.kanji;
       document.getElementById('pq1-furigana').innerText = wordObj.furigana;
 
-      const allWords = JAPANESE_LESSONS[currentLessonIdx].words;
       let options = [wordObj.meaning];
       while (options.length < 4) {
-        const rand = allWords[Math.floor(Math.random() * allWords.length)].meaning;
+        const rand = currentStageWords[Math.floor(Math.random() * currentStageWords.length)].meaning;
         if (!options.includes(rand)) options.push(rand);
       }
       options.sort(() => Math.random() - 0.5);
@@ -589,10 +671,9 @@
       document.getElementById('pq2-reading').innerText = gapData.sentenceReading;
       document.getElementById('pq2-sentence').innerHTML = gapData.gapSentence.replace('_______', '<span class="inline-block border-b-2 border-slate-700 w-20 mx-1"></span>');
 
-      const allWords = JAPANESE_LESSONS[currentLessonIdx].words;
       let options = [gapData.word];
       while (options.length < 4) {
-        const rand = allWords[Math.floor(Math.random() * allWords.length)].kanji;
+        const rand = currentStageWords[Math.floor(Math.random() * currentStageWords.length)].kanji;
         if (!options.includes(rand)) options.push(rand);
       }
       options.sort(() => Math.random() - 0.5);
@@ -624,8 +705,8 @@
       speakJapanese(gapData.fullJa);
     }
 
-    function finishAndBackToLessons() {
-      showScreen('screen-lessons');
+    function finishAndBackToStages() {
+      openLessonStages(selectedLessonId);
     }
 
     window.onload = () => {
