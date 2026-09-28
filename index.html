@@ -285,7 +285,7 @@
         <div class="space-y-3 mb-4" id="pq1-options"></div>
       </div>
 
-      <!-- VÙNG 2: NGHE ĐIỀN CHỖ TRỐNG (ĐÃ SỬA) -->
+      <!-- VÙNG 2: NGHE ĐIỀN CHỖ TRỐNG -->
       <div id="part-quiz-gap" class="hidden flex-1 flex flex-col justify-between px-6 py-4">
         <div class="flex-1 flex flex-col items-center justify-center">
           <div class="flex items-center justify-center space-x-3 mb-6">
@@ -304,7 +304,7 @@
         <div class="space-y-3 mb-4" id="pq2-options"></div>
       </div>
 
-      <!-- VÙNG 3: GHÉP CẶP (ĐÃ SỬA NỐI HẾT MỚI BẤM KIỂM TRA) -->
+      <!-- VÙNG 3: GHÉP CẶP -->
       <div id="part-quiz-match" class="hidden flex-1 flex flex-col justify-between px-5 py-4">
         <div class="flex-1 flex flex-col justify-center">
           <div class="grid grid-cols-2 gap-3" id="pq3-match-container"></div>
@@ -556,18 +556,17 @@
       const shuffledForMeaning = [...words].sort(() => Math.random() - 0.5).slice(0, 4);
       shuffledForMeaning.forEach(w => practiceTasks.push({ type: 'meaning', data: w }));
 
-      // 2. 3 câu Nghe điền câu (Đã sửa lỗi nhận diện thể chia & ẩn phiên âm làm lộ từ)
+      // 2. 3 câu Nghe điền câu (Đã sửa lỗi nhận diện thể chia từ vựng & ẩn IPA làm lộ từ)
       const shuffledForGap = [...words].sort(() => Math.random() - 0.5).slice(0, 3);
       shuffledForGap.forEach(w => {
         const sentence = w.example1.en;
         let gapSentence = sentence;
         
-        // Tạo biểu thức Regex để bắt cả từ gốc và các dạng phái sinh (thêm s, ed, ing, d, ly, ...)
+        // Bắt từ gốc và các hậu tố biến đổi chia thì (-s, -es, -ed, -d, -ing, -ly, ...)
         const wordRegex = new RegExp(`\\b${w.word}[a-z]*\\b`, 'i');
         if (wordRegex.test(sentence)) {
           gapSentence = sentence.replace(wordRegex, '_______');
         } else {
-          // Dự phòng nếu là cụm từ có dấu gạch hoặc biến thể
           const firstWord = w.word.split(' ')[0];
           const firstWordRegex = new RegExp(`\\b${firstWord}[a-z]*\\b`, 'i');
           gapSentence = sentence.replace(firstWordRegex, '_______');
@@ -684,13 +683,12 @@
       speakText(wordObj.word);
     }
 
-    //let currentGapTaskData = null;
     function renderPartGap(gapData) {
       currentGapTaskData = gapData;
       document.getElementById('practice-header-title').innerText = "Nghe âm thanh, điền từ vào chỗ trống";
       document.getElementById('part-quiz-gap').classList.remove('hidden');
 
-      // Hiển thị dịch nghĩa tiếng Việt gợi ý thay vì phiên âm ngữ âm làm lộ đáp án
+      // Hiển thị bản dịch nghĩa tiếng Việt của câu để gợi ý thay vì phiên âm ngữ âm làm lộ từ
       const ipaEl = document.getElementById('pq2-ipa');
       if (ipaEl) {
         ipaEl.innerText = gapData.vi || "";
@@ -751,7 +749,7 @@
     }
 
     // ==========================================
-    // LOGIC DẠNG BÀI GHÉP CẶP ÂM THANH (NỐI HẾT MỚI BẤM KIỂM TRA)
+    // LOGIC DẠNG BÀI GHÉP CẶP ÂM THANH (CHỌN HẾT MỚI BẤM KIỂM TRA)
     // ==========================================
     let matchPairsState = [];
     let currentActiveAudio = null;
