@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>N3 - 中級へ行こう (Tiền Trung Cấp)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Nạp file dữ liệu từ vựng Trung cấp -->
+  <script src="data_chukyu.js"></script>
+  
+  <!-- Cấu hình Firebase & Đồng bộ dữ liệu -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+    import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCizgsPFGkkdbVYl4VAqfggphPvM4l6AnQ",
+      authDomain: "tuvung-ba736.firebaseapp.com",
+      projectId: "tuvung-ba736",
+      storageBucket: "tuvung-ba736.firebasestorage.app",
+      messagingSenderId: "283132513140",
+      appId: "1:283132513140:web:a388c1171785d7cfe4fa21",
+      measurementId: "G-KX30813EGG"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    const provider = new GoogleAuthProvider();
+
+    window.currentUser = null;
+
+    window.loginWithGoogle = async () => {
+      try {
+        await signInWithPopup(auth, provider);
+      } catch (err) {
+        alert("Đăng nhập thất bại: " + err.message);
+      }
+    };
+
+    window.logoutGoogle = async () => {
+      await signOut(auth);
+      location.reload();
+    };
+
+    onAuthStateChanged(auth, async (user) => {
+      window.currentUser = user;
+      const loginBtn = document.getElementById('btn-login');
+      const profile = document.getElementById('user-profile');
+      const avatar = document.getElementById('user-avatar');
+
+      if (user) {
+        if (loginBtn) loginBtn.classList.add('hidden');
+        if (profile) profile.classList.remove('hidden');
+        if (avatar) avatar.src = user.photoURL || 'https://via.placeholder.com/32';
+
+        try {
+          const docRef = doc(db, "users", user.uid);
+          const docSnap = await getDoc(docRef);
+          if (docSnap.exists()) {
+            const data = docSnap.data();
+            if (data.chukyuStageProgress) {
+              window.chukyuProgress = data.chukyuStageProgress;
+              localStorage.setItem('chukyu_stage_progress', JSON.stringify(window.chukyuProgress));
+            }
+            if (typeof renderLessonGrid === 'function') renderLessonGrid();
+          } else {
+            window.syncProgressToCloud();
+          }
+        } catch (e) {
+          console.error("Lỗi tải đám mây:", e);
+        }
+      } else {
+        if (loginBtn) loginBtn.classList.remove('hidden');
+        if (profile) profile.classList.add('hidden');
+      }
+    });
+
+    window.syncProgressToCloud = async () => {
+      if (!window.currentUser) return;
+      try {
+        const docRef = doc(db, "users", window.currentUser.uid);
+        await setDoc(docRef, {
+          chukyuStageProgress: window.chukyuProgress,
+          updatedAt: new Date().toISOString()
+        }, { merge: true });
+      } catch (e) {
+        console.error("Lỗi lưu đám mây:", e);
+      }
+    };
+  </script>
+
+  <style>
+    body { -webkit-tap-highlight-color: transparent; user-select: none; }
+    .furigana-sub { font-size: 0.85rem; line-height: 1.2rem; color: #64748b; }
+  </style>
+</head>
+<body class="bg-slate-100 flex justify-center min-h-screen text-slate-800">
+
+  <div class="w-full max-w-md bg-white min-h-screen flex flex-col justify-between shadow-2xl relative overflow-x-hidden">
+
+    <!-- MÀN HÌNH 1: TỔNG QUAN 10 BÀI TRUNG CẤP -->
+    <div id="screen-lessons" class="flex-1 flex flex-col">
+      <div class="px-4 pt-8 pb-4 flex items-center justify-between border-b border-slate-100">
+        <!-- Chuyển đổi giữa 3 môn -->
+        <div class="flex items-center space-x-1.5">
+          <a href="index.html" class="text-xs bg-slate-50 text-slate-600 font-bold px-2 py-1 rounded-lg border border-slate-200 hover:bg-slate-100">
+            TOEIC
+          </a>
+          <a href="japanese.html" class="text-xs bg-red-50 text-red-600 font-bold px-2 py-1 rounded-lg border border-red-200 hover:bg-red-100">
+            Daichi (N4)
+          </a>
+        </div>
+
+        <div class="font-bold text-emerald-800 text-sm">
+          <span>中級へ行こう</span>
+        </div>
+        
+        <div class="flex items-center space-x-1.5">
+          <button id="btn-login" onclick="loginWithGoogle()" class="text-xs bg-blue-50 text-blue-600 font-bold px-2 py-1 rounded-full border border-blue-200">
+            Đồng bộ
+          </button>
+          
+          <div id="user-profile" class="hidden cursor-pointer" onclick="if(confirm('Đăng xuất?')) logoutGoogle();">
+            <img id="user-avatar" class="w-7 h-7 rounded-full border-2 border-emerald-400 object-cover" src="" alt="avatar">
+          </div>
+
+          <button onclick="resetAllProgress()" class="text-slate-400 hover:text-rose-500 pl-1"><i class="fa-solid fa-rotate-left"></i></button>
+        </div>
+      </div>
+
+      <!-- Banner tổng quan -->
+      <div class="p-4">
+        <div class="bg-emerald-50/80 border border-emerald-100 rounded-2xl p-4 flex items-center space-x-4">
+          <div class="w-16 h-16 bg-emerald-600 rounded-2xl flex items-center justify-center text-white text-2xl font-extrabold shadow-md shadow-emerald-600/30">
+            中
+          </div>
+          <div>
+            <h3 class="font-bold text-slate-900 text-base">中級へ行こう (N3)</h3>
+            <p class="text-xs text-slate-500 mt-0.5">Tiền trung cấp - 10 bài chuyên sâu</p>
+            <div class="flex items-center space-x-3 mt-2 text-xs font-semibold">
+              <span class="text-emerald-700 flex items-center"><i class="fa-solid fa-book-open mr-1"></i> 10 bài đọc hiểu</span>
+              <span class="text-amber-500 flex items-center"><i class="fa-solid fa-star mr-1"></i> <span id="total-stars-count">0</span> sao</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Lưới 10 bài học trung cấp -->
+      <div class="px-4 flex-1">
+        <div class="text-xs font-bold text-emerald-600 flex items-center mb-3">
+          <span class="w-2 h-2 rounded-full bg-emerald-500 mr-1.5"></span> Danh sách 10 bài học (第1課 ~ 第10課)
+        </div>
+        <div class="grid grid-cols-5 gap-3" id="lesson-grid"></div>
+      </div>
+    </div>
+
+    <!-- MÀN HÌNH 2: DANH SÁCH CỬA ẢI CON (STAGES) -->
+    <div id="screen-stages" class="hidden flex-1 flex flex-col bg-white">
+      <div class="px-5 pt-8 pb-3 flex items-center justify-between border-b border-slate-100">
+        <div class="flex items-center">
+          <button onclick="showScreen('screen-lessons')" class="text-slate-600 text-lg mr-3">
+            <i class="fa-solid fa-chevron-left"></i>
+          </button>
+          <h2 id="stages-lesson-title" class="font-bold text-slate-900 text-base">第1課</h2>
+        </div>
+        <span id="stages-count-badge" class="text-xs font-bold bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-full"></span>
+      </div>
+
+      <div class="px-5 py-3 text-xs text-slate-400 font-medium">Mỗi cửa chia nhỏ 15 từ giúp ghi nhớ chuẩn xác</div>
+      <div class="flex-1 overflow-y-auto px-5 py-2 space-y-3" id="stage-cards-container"></div>
+    </div>
+
+    <!-- MÀN HÌNH 3: CHI TIẾT TỪ TRONG CỬA -->
+    <div id="screen-stage-detail" class="hidden flex-1 flex flex-col bg-white">
+      <div class="px-5 pt-8 pb-3 flex items-center border-b border-slate-100">
+        <button onclick="showScreen('screen-stages')" class="text-slate-600 text-lg mr-4">
+          <i class="fa-solid fa-chevron-left"></i>
+        </button>
+        <div>
+          <h2 id="detail-stage-name" class="font-bold text-slate-900 text-base">Cửa 1</h2>
+          <p id="detail-stage-desc" class="text-xs text-slate-400"></p>
+        </div>
+      </div>
+
+      <div class="flex-1 overflow-y-auto px-5 divide-y divide-slate-100" id="detail-word-list"></div>
+
+      <div class="p-4 bg-white border-t border-slate-100 grid grid-cols-2 gap-3">
+        <button onclick="startLearningMode()" class="py-3 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-bold rounded-2xl transition">
+          Học từ vựng
+        </button>
+        <button onclick="startCombinedPractice()" class="py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-2xl shadow-md transition">
+          Luyện tập
+        </button>
+      </div>
+    </div>
+
+    <!-- MÀN HÌNH 4: HỌC TỪ (FLASHCARD / TTS) -->
+    <div id="screen-study" class="hidden flex-1 flex flex-col justify-between bg-white">
+      <div>
+        <div class="h-1 bg-slate-100 w-full">
+          <div id="study-progress-bar" class="h-full bg-emerald-500 transition-all duration-300 w-0"></div>
+        </div>
+        <div class="px-5 py-3 flex items-center justify-between text-slate-400">
+          <button onclick="showScreen('screen-stage-detail')"><i class="fa-solid fa-pause"></i></button>
+          <button onclick="toggleSlowSpeed()" id="btn-tortoise" class="hover:text-emerald-600"><i class="fa-solid fa-shield-cat"></i></button>
+        </div>
+      </div>
+
+      <div class="px-6 flex-1 flex flex-col">
+        <div class="mt-4 pb-6 border-b border-slate-100">
+          <div class="flex justify-between items-start">
+            <div>
+              <div id="study-furigana" class="text-slate-400 font-medium text-base mb-0.5"></div>
+              <h1 id="study-kanji" class="text-3xl font-extrabold text-slate-900 tracking-tight"></h1>
+            </div>
+            <button onclick="speakJapanese(currentWord.kanji)" class="text-emerald-600 text-2xl hover:scale-110 active:scale-95 transition p-2">
+              <i class="fa-solid fa-volume-high"></i>
+            </button>
+          </div>
+          <div class="mt-3">
+            <span id="study-pos" class="text-xs font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-md"></span>
+          </div>
+          <div id="study-meaning" class="hidden mt-3 text-slate-700 font-semibold text-base"></div>
+        </div>
+
+        <div class="mt-6 flex-1">
+          <div>
+            <p id="ex1-ja" class="text-base text-slate-800 font-medium"></p>
+            <p id="ex1-reading" class="furigana-sub mt-0.5"></p>
+            <p id="ex1-vi" class="hidden text-xs text-slate-500 mt-2"></p>
+          </div>
+        </div>
+      </div>
+
+      <div class="p-5">
+        <button id="btn-show-meaning" onclick="revealMeaning()" class="w-full py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold rounded-2xl transition">
+          Nhấp vào để xem giải nghĩa
+        </button>
+        <button id="btn-next-word" onclick="nextStudyWord()" class="hidden w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-2xl shadow-lg transition">
+          Từ tiếp theo
+        </button>
+      </div>
+    </div>
+
+    <!-- MÀN HÌNH 5: LUYỆN TẬP PHẢN XẠ -->
+    <div id="screen-practice-wrapper" class="hidden flex-1 flex flex-col justify-between bg-white">
+      <div>
+        <div class="h-1 bg-slate-100 w-full">
+          <div id="practice-progress-bar" class="h-full bg-emerald-500 transition-all duration-300 w-0"></div>
+        </div>
+        <div class="px-5 py-4 flex items-center justify-between text-slate-400">
+          <button onclick="showScreen('screen-stage-detail')"><i class="fa-solid fa-pause"></i></button>
+          <span id="practice-header-title" class="text-xs font-bold text-slate-500 uppercase">Luyện tập</span>
+          <span id="practice-counter" class="text-xs font-bold text-emerald-600">1/6</span>
+        </div>
+      </div>
+
+      <div id="part-quiz-meaning" class="hidden flex-1 flex flex-col justify-between px-6 py-4">
+        <div class="text-center my-auto">
+          <div id="pq1-furigana" class="text-base text-slate-400 mb-1"></div>
+          <h2 id="pq1-kanji" class="text-4xl font-extrabold text-slate-900 tracking-tight"></h2>
+        </div>
+        <div class="space-y-3 mb-4" id="pq1-options"></div>
+      </div>
+
+      <div id="part-quiz-gap" class="hidden flex-1 flex flex-col justify-between px-6 py-4">
+        <div class="flex-1 flex flex-col items-center justify-center">
+          <button onclick="speakJapanese(currentGapTaskData.fullJa)" class="w-20 h-20 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white rounded-full flex items-center justify-center text-3xl shadow-lg shadow-emerald-600/30 transition mb-6">
+            <i class="fa-solid fa-volume-high"></i>
+          </button>
+          <div class="text-center">
+            <p id="pq2-reading" class="text-xs text-slate-400 mb-1.5"></p>
+            <p id="pq2-sentence" class="text-lg font-bold text-slate-800 leading-relaxed"></p>
+          </div>
+        </div>
+        <div class="space-y-3 mb-4" id="pq2-options"></div>
+      </div>
+
+      <div id="part-quiz-finish" class="hidden flex-1 flex flex-col items-center justify-center p-8 text-center">
+        <div class="w-24 h-24 bg-amber-100 text-amber-500 rounded-full flex items-center justify-center text-4xl shadow-inner mb-4">
+          <i class="fa-solid fa-trophy"></i>
+        </div>
+        <h2 class="text-2xl font-black text-slate-900" id="finish-title">Hoàn thành bài tập!</h2>
+        <div class="flex items-center justify-center space-x-2 my-3 text-3xl" id="finish-stars"></div>
+        <p class="text-sm text-slate-500 mt-1" id="finish-score-desc"></p>
+        <button onclick="finishAndBackToStages()" class="mt-8 w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-2xl shadow-lg transition">
+          Xác nhận & Lưu tiến độ
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    // Nạp mảng dữ liệu từ file data_chukyu.js
+    const CHUKYU_LESSONS = window.CHUKYU_LESSONS || [];
+
+    const WORDS_PER_STAGE = 15;
+    window.chukyuProgress = JSON.parse(localStorage.getItem('chukyu_stage_progress') || '{}');
+
+    function saveProgress() {
+      localStorage.setItem('chukyu_stage_progress', JSON.stringify(window.chukyuProgress));
+      renderLessonGrid();
+      if (window.syncProgressToCloud) window.syncProgressToCloud();
+    }
+
+    function resetAllProgress() {
+      if (confirm("Đặt lại toàn bộ tiến trình sách Trung cấp?")) {
+        window.chukyuProgress = {};
+        localStorage.removeItem('chukyu_stage_progress');
+        saveProgress();
+      }
+    }
+
+    let isSlowSpeech = false;
+    function speakJapanese(text, rate = 1) {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'ja-JP';
+        utterance.rate = isSlowSpeech ? 0.7 : rate;
+        window.speechSynthesis.speak(utterance);
+      }
+    }
+
+    function toggleSlowSpeed() {
+      isSlowSpeech = !isSlowSpeech;
+      const btn = document.getElementById('btn-tortoise');
+      btn.className = isSlowSpeech ? "text-amber-500 font-bold" : "hover:text-emerald-600";
+      if (currentWord) speakJapanese(currentWord.kanji);
+    }
+
+    function showScreen(screenId) {
+      ['screen-lessons', 'screen-stages', 'screen-stage-detail', 'screen-study', 'screen-practice-wrapper'].forEach(id => {
+        document.getElementById(id).classList.add('hidden');
+      });
+      document.getElementById(screenId).classList.remove('hidden');
+    }
+
+    window.renderLessonGrid = function() {
+      const container = document.getElementById('lesson-grid');
+      container.innerHTML = '';
+      let totalStars = 0;
+
+      for (let i = 1; i <= 10; i++) {
+        let lessonStars = 0;
+        for (let s = 1; s <= 5; s++) {
+          lessonStars += window.chukyuProgress[`${i}_${s}`] || 0;
+        }
+        totalStars += lessonStars;
+
+        const btn = document.createElement('button');
+        const borderClass = lessonStars > 0 ? "border-emerald-500 shadow-sm" : "border-slate-200 opacity-90";
+        btn.className = `flex flex-col items-center justify-between p-2.5 rounded-2xl border-2 ${borderClass} bg-white hover:border-emerald-500 active:scale-95 transition h-20`;
+        btn.innerHTML = `
+          <div class="w-full flex justify-end"><span class="text-[9px] font-bold bg-emerald-600 text-white rounded px-1">N3</span></div>
+          <span class="text-base font-bold text-emerald-700">${i}</span>
+          <div class="text-[10px] text-amber-500 font-bold flex items-center">
+            <i class="fa-solid fa-star text-[9px] mr-0.5"></i> ${lessonStars}
+          </div>
+        `;
+        btn.onclick = () => openLessonStages(i);
+        container.appendChild(btn);
+      }
+      document.getElementById('total-stars-count').innerText = totalStars;
+    };
+
+    let selectedLessonId = 1;
+    let currentStageIndex = 0;
+    let currentStageWords = [];
+
+    function openLessonStages(lessonId) {
+      selectedLessonId = lessonId;
+      const lesson = CHUKYU_LESSONS.find(l => l.id === lessonId);
+      if (!lesson) {
+        alert("Dữ liệu bài này đang được cập nhật!");
+        return;
+      }
+      
+      document.getElementById('stages-lesson-title').innerText = lesson.title;
+      document.getElementById('stages-count-badge').innerText = `${lesson.words.length} từ vựng`;
+
+      const stagesContainer = document.getElementById('stage-cards-container');
+      stagesContainer.innerHTML = '';
+
+      const totalStages = Math.ceil(lesson.words.length / WORDS_PER_STAGE);
+
+      for (let s = 0; s < totalStages; s++) {
+        const startIdx = s * WORDS_PER_STAGE;
+        const endIdx = Math.min(startIdx + WORDS_PER_STAGE, lesson.words.length);
+        const stageWords = lesson.words.slice(startIdx, endIdx);
+        const stageKey = `${lesson.id}_${s + 1}`;
+        const stars = window.chukyuProgress[stageKey] || 0;
+
+        let starsHtml = '';
+        for (let star = 1; star <= 3; star++) {
+          starsHtml += star <= stars ? `<i class="fa-solid fa-star text-amber-400"></i>` : `<i class="fa-solid fa-star text-slate-200"></i>`;
+        }
+
+        const card = document.createElement('div');
+        card.className = "p-4 rounded-2xl border-2 border-slate-100 hover:border-emerald-300 bg-slate-50 flex items-center justify-between cursor-pointer transition shadow-sm";
+        card.onclick = () => openStageDetail(s, stageWords);
+        card.innerHTML = `
+          <div class="flex items-center space-x-3.5">
+            <div class="w-11 h-11 bg-white border border-emerald-200 text-emerald-700 rounded-xl flex items-center justify-center font-black text-base shadow-sm">
+              ${s + 1}
+            </div>
+            <div>
+              <h4 class="font-bold text-slate-800 text-sm">Cửa số ${s + 1} (Từ ${startIdx + 1} ~ ${endIdx})</h4>
+              <p class="text-xs text-slate-400 mt-0.5">Quy mô: ${stageWords.length} từ</p>
+            </div>
+          </div>
+          <div class="text-sm flex space-x-1">${starsHtml}</div>
+        `;
+        stagesContainer.appendChild(card);
+      }
+
+      showScreen('screen-stages');
+    }
+
+    function openStageDetail(stageIdx, words) {
+      currentStageIndex = stageIdx;
+      currentStageWords = words;
+
+      document.getElementById('detail-stage-name').innerText = `Cửa số ${stageIdx + 1} - Bài ${selectedLessonId}`;
+      document.getElementById('detail-stage-desc').innerText = `Gồm ${words.length} từ vựng trung cấp`;
+
+      const listContainer = document.getElementById('detail-word-list');
+      listContainer.innerHTML = '';
+
+      words.forEach(w => {
+        const row = document.createElement('div');
+        row.className = "py-3 flex flex-col justify-center";
+        row.innerHTML = `
+          <span class="text-xs text-slate-400 font-medium">${w.furigana}</span>
+          <h4 class="text-xl font-bold text-slate-800">${w.kanji}</h4>
+          <p class="text-xs text-slate-500 mt-0.5"><span class="text-emerald-600 mr-2 font-medium">${w.pos}</span>${w.meaning}</p>
+        `;
+        listContainer.appendChild(row);
+      });
+
+      showScreen('screen-stage-detail');
+    }
+
+    let currentWordIdx = 0;
+    let currentWord = null;
+
+    function startLearningMode() {
+      currentWordIdx = 0;
+      loadStudyWord();
+      showScreen('screen-study');
+    }
+
+    function loadStudyWord() {
+      currentWord = currentStageWords[currentWordIdx];
+      const percent = ((currentWordIdx + 1) / currentStageWords.length) * 100;
+      document.getElementById('study-progress-bar').style.width = `${percent}%`;
+
+      document.getElementById('study-furigana').innerText = currentWord.furigana;
+      document.getElementById('study-kanji').innerText = currentWord.kanji;
+      document.getElementById('study-pos').innerText = currentWord.pos;
+      document.getElementById('study-meaning').innerText = currentWord.meaning;
+      document.getElementById('study-meaning').classList.add('hidden');
+
+      document.getElementById('ex1-ja').innerText = currentWord.example.ja;
+      document.getElementById('ex1-reading').innerText = currentWord.example.reading;
+      document.getElementById('ex1-vi').innerText = currentWord.example.vi;
+      document.getElementById('ex1-vi').classList.add('hidden');
+
+      document.getElementById('btn-show-meaning').classList.remove('hidden');
+      document.getElementById('btn-next-word').classList.add('hidden');
+      speakJapanese(currentWord.kanji);
+    }
+
+    function revealMeaning() {
+      document.getElementById('study-meaning').classList.remove('hidden');
+      document.getElementById('ex1-vi').classList.remove('hidden');
+      document.getElementById('btn-show-meaning').classList.add('hidden');
+      document.getElementById('btn-next-word').classList.remove('hidden');
+    }
+
+    function nextStudyWord() {
+      if (currentWordIdx < currentStageWords.length - 1) {
+        currentWordIdx++;
+        loadStudyWord();
+      } else {
+        const stageKey = `${selectedLessonId}_${currentStageIndex + 1}`;
+        if (!window.chukyuProgress[stageKey]) window.chukyuProgress[stageKey] = 1;
+        saveProgress();
+        alert("Đã xem qua hết từ của cửa này! Đạt ⭐ 1 SAO. Hãy vào Luyện tập để lấy 3 sao!");
+        startCombinedPractice();
+      }
+    }
+
+    let practiceTasks = [];
+    let currentTaskIdx = 0;
+    let correctAnswersCount = 0;
+
+    function startCombinedPractice() {
+      practiceTasks = [];
+      correctAnswersCount = 0;
+
+      const shuffledMeaning = [...currentStageWords].sort(() => Math.random() - 0.5).slice(0, 4);
+      shuffledMeaning.forEach(w => practiceTasks.push({ type: 'meaning', data: w }));
+
+      const shuffledGap = [...currentStageWords].sort(() => Math.random() - 0.5).slice(0, 2);
+      shuffledGap.forEach(w => {
+        practiceTasks.push({
+          type: 'gap',
+          data: {
+            word: w.kanji,
+            reading: w.furigana,
+            fullJa: w.example.ja,
+            sentenceReading: w.example.reading,
+            gapSentence: w.example.ja.replace(w.kanji, '_______')
+          }
+        });
+      });
+
+      practiceTasks.sort(() => Math.random() - 0.5);
+      currentTaskIdx = 0;
+      showScreen('screen-practice-wrapper');
+      renderCurrentPracticeTask();
+    }
+
+    let currentGapTaskData = null;
+    function renderCurrentPracticeTask() {
+      document.getElementById('part-quiz-meaning').classList.add('hidden');
+      document.getElementById('part-quiz-gap').classList.add('hidden');
+      document.getElementById('part-quiz-finish').classList.add('hidden');
+
+      if (currentTaskIdx >= practiceTasks.length) {
+        const percent = Math.round((correctAnswersCount / practiceTasks.length) * 100);
+        let awardedStars = percent >= 80 ? 3 : (percent >= 60 ? 2 : 1);
+
+        const stageKey = `${selectedLessonId}_${currentStageIndex + 1}`;
+        if (awardedStars > (window.chukyuProgress[stageKey] || 0)) {
+          window.chukyuProgress[stageKey] = awardedStars;
+        }
+        saveProgress();
+
+        let starIcons = '';
+        for (let s = 1; s <= 3; s++) {
+          starIcons += s <= awardedStars ? `<i class="fa-solid fa-star text-amber-400"></i>` : `<i class="fa-solid fa-star text-slate-200"></i>`;
+        }
+        document.getElementById('finish-stars').innerHTML = starIcons;
+        document.getElementById('finish-score-desc').innerText = `Chính xác ${correctAnswersCount}/${practiceTasks.length} câu (${percent}%)`;
+        document.getElementById('finish-title').innerText = awardedStars === 3 ? "Xuất sắc! Đạt 3 sao" : (awardedStars === 2 ? "Rất tốt! Đạt 2 sao" : "Hoàn thành! Đạt 1 sao");
+        document.getElementById('part-quiz-finish').classList.remove('hidden');
+        return;
+      }
+
+      const percent = (currentTaskIdx / practiceTasks.length) * 100;
+      document.getElementById('practice-progress-bar').style.width = `${percent}%`;
+      document.getElementById('practice-counter').innerText = `${currentTaskIdx + 1}/${practiceTasks.length}`;
+
+      const task = practiceTasks[currentTaskIdx];
+      if (task.type === 'meaning') renderPartMeaning(task.data);
+      else if (task.type === 'gap') renderPartGap(task.data);
+    }
+
+    function renderPartMeaning(wordObj) {
+      document.getElementById('practice-header-title').innerText = "Chọn nghĩa của từ";
+      document.getElementById('part-quiz-meaning').classList.remove('hidden');
+      document.getElementById('pq1-kanji').innerText = wordObj.kanji;
+      document.getElementById('pq1-furigana').innerText = wordObj.furigana;
+
+      let options = [wordObj.meaning];
+      while (options.length < 4) {
+        const rand = currentStageWords[Math.floor(Math.random() * currentStageWords.length)].meaning;
+        if (!options.includes(rand)) options.push(rand);
+      }
+      options.sort(() => Math.random() - 0.5);
+
+      const container = document.getElementById('pq1-options');
+      container.innerHTML = '';
+      let answered = false;
+
+      options.forEach(opt => {
+        const btn = document.createElement('button');
+        btn.className = "w-full p-4 rounded-2xl border border-slate-200 hover:border-emerald-500 text-left text-sm font-medium text-slate-700 transition";
+        btn.innerText = opt;
+        btn.onclick = () => {
+          if (answered) return;
+          answered = true;
+          if (opt === wordObj.meaning) {
+            correctAnswersCount++;
+            btn.classList.add('bg-emerald-50', 'border-emerald-500', 'text-emerald-700');
+          } else {
+            btn.classList.add('bg-rose-50', 'border-rose-500', 'text-rose-700');
+          }
+          setTimeout(() => {
+            currentTaskIdx++;
+            renderCurrentPracticeTask();
+          }, 500);
+        };
+        container.appendChild(btn);
+      });
+      speakJapanese(wordObj.kanji);
+    }
+
+    function renderPartGap(gapData) {
+      currentGapTaskData = gapData;
+      document.getElementById('practice-header-title').innerText = "Nghe âm thanh, điền từ vào câu";
+      document.getElementById('part-quiz-gap').classList.remove('hidden');
+
+      document.getElementById('pq2-reading').innerText = gapData.sentenceReading;
+      document.getElementById('pq2-sentence').innerHTML = gapData.gapSentence.replace('_______', '<span class="inline-block border-b-2 border-slate-700 w-20 mx-1"></span>');
+
+      let options = [gapData.word];
+      while (options.length < 4) {
+        const rand = currentStageWords[Math.floor(Math.random() * currentStageWords.length)].kanji;
+        if (!options.includes(rand)) options.push(rand);
+      }
+      options.sort(() => Math.random() - 0.5);
+
+      const container = document.getElementById('pq2-options');
+      container.innerHTML = '';
+      let answered = false;
+
+      options.forEach(opt => {
+        const btn = document.createElement('button');
+        btn.className = "w-full p-3.5 rounded-2xl border border-slate-200 hover:border-emerald-500 text-center font-bold text-slate-800 transition text-lg";
+        btn.innerText = opt;
+        btn.onclick = () => {
+          if (answered) return;
+          answered = true;
+          if (opt === gapData.word) {
+            correctAnswersCount++;
+            btn.classList.add('bg-emerald-50', 'border-emerald-500');
+          } else {
+            btn.classList.add('bg-rose-50', 'border-rose-500');
+          }
+          setTimeout(() => {
+            currentTaskIdx++;
+            renderCurrentPracticeTask();
+          }, 500);
+        };
+        container.appendChild(btn);
+      });
+      speakJapanese(gapData.fullJa);
+    }
+
+    function finishAndBackToStages() {
+      openLessonStages(selectedLessonId);
+    }
+
+    window.onload = () => {
+      renderLessonGrid();
+    };
+  </script>
+</body>
+</html>
