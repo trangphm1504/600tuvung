@@ -120,7 +120,7 @@
         </div>
         
         <div class="flex items-center space-x-1.5">
-          <button id="btn-login" onclick="loginWithGoogle()" class="text-xs bg-blue-50 text-blue-600 font-bold px-2 py-1 rounded-full border border-blue-200">
+          <button id="btn-login" onclick="loginWithGoogle()" class="text-xs bg-blue-50 text-blue-600 font-bold px-2.5 py-1 rounded-full border border-blue-200">
             Đồng bộ
           </button>
           
@@ -259,6 +259,7 @@
         </div>
       </div>
 
+      <!-- VÙNG 1: CHỌN NGHĨA -->
       <div id="part-quiz-meaning" class="hidden flex-1 flex flex-col justify-between px-6 py-4">
         <div class="text-center my-auto">
           <div id="pq1-furigana" class="text-base text-slate-400 mb-1"></div>
@@ -267,6 +268,7 @@
         <div class="space-y-3 mb-4" id="pq1-options"></div>
       </div>
 
+      <!-- VÙNG 2: NGHE ĐIỀN CÂU -->
       <div id="part-quiz-gap" class="hidden flex-1 flex flex-col justify-between px-6 py-4">
         <div class="flex-1 flex flex-col items-center justify-center">
           <button onclick="speakJapanese(currentGapTaskData.fullJa)" class="w-20 h-20 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white rounded-full flex items-center justify-center text-3xl shadow-lg shadow-emerald-600/30 transition mb-6">
@@ -280,6 +282,19 @@
         <div class="space-y-3 mb-4" id="pq2-options"></div>
       </div>
 
+      <!-- VÙNG 3: DẠNG GHÉP CẶP ÂM THANH (MỚI) -->
+      <div id="part-quiz-match" class="hidden flex-1 flex flex-col justify-between px-5 py-4">
+        <div class="flex-1 flex flex-col justify-center">
+          <div class="grid grid-cols-2 gap-3" id="pq3-match-container"></div>
+        </div>
+        <div class="mt-4">
+          <button id="btn-pq3-check" onclick="checkMatchSelection()" disabled class="w-full py-3.5 bg-emerald-600 disabled:bg-slate-200 disabled:text-slate-400 hover:bg-emerald-700 text-white font-bold rounded-2xl shadow-lg transition">
+            Kiểm tra
+          </button>
+        </div>
+      </div>
+
+      <!-- VÙNG TỔNG KẾT VÀ TÍNH SAO -->
       <div id="part-quiz-finish" class="hidden flex-1 flex flex-col items-center justify-center p-8 text-center">
         <div class="w-24 h-24 bg-amber-100 text-amber-500 rounded-full flex items-center justify-center text-4xl shadow-inner mb-4">
           <i class="fa-solid fa-trophy"></i>
@@ -296,9 +311,8 @@
   </div>
 
   <script>
-    // Nạp mảng dữ liệu từ file data_chukyu.js
     function getChukyuLessons() {
-    return window.CHUKYU_LESSONS || [];
+      return window.CHUKYU_LESSONS || [];
     }   
 
     const WORDS_PER_STAGE = 15;
@@ -345,6 +359,7 @@
 
     window.renderLessonGrid = function() {
       const container = document.getElementById('lesson-grid');
+      if (!container) return;
       container.innerHTML = '';
       let totalStars = 0;
 
@@ -368,7 +383,8 @@
         btn.onclick = () => openLessonStages(i);
         container.appendChild(btn);
       }
-      document.getElementById('total-stars-count').innerText = totalStars;
+      const totalStarsEl = document.getElementById('total-stars-count');
+      if (totalStarsEl) totalStarsEl.innerText = totalStars;
     };
 
     let selectedLessonId = 1;
@@ -506,9 +522,11 @@
       practiceTasks = [];
       correctAnswersCount = 0;
 
-      const shuffledMeaning = [...currentStageWords].sort(() => Math.random() - 0.5).slice(0, 4);
+      // 1. 3 câu Chọn nghĩa
+      const shuffledMeaning = [...currentStageWords].sort(() => Math.random() - 0.5).slice(0, 3);
       shuffledMeaning.forEach(w => practiceTasks.push({ type: 'meaning', data: w }));
 
+      // 2. 2 câu Nghe điền từ vào câu ví dụ
       const shuffledGap = [...currentStageWords].sort(() => Math.random() - 0.5).slice(0, 2);
       shuffledGap.forEach(w => {
         practiceTasks.push({
@@ -523,6 +541,13 @@
         });
       });
 
+      // 3. 1 bài Ghép cặp âm thanh (4 từ)
+      const shuffledMatch = [...currentStageWords].sort(() => Math.random() - 0.5).slice(0, 4);
+      practiceTasks.push({
+        type: 'match',
+        data: shuffledMatch
+      });
+
       practiceTasks.sort(() => Math.random() - 0.5);
       currentTaskIdx = 0;
       showScreen('screen-practice-wrapper');
@@ -533,6 +558,7 @@
     function renderCurrentPracticeTask() {
       document.getElementById('part-quiz-meaning').classList.add('hidden');
       document.getElementById('part-quiz-gap').classList.add('hidden');
+      document.getElementById('part-quiz-match').classList.add('hidden');
       document.getElementById('part-quiz-finish').classList.add('hidden');
 
       if (currentTaskIdx >= practiceTasks.length) {
@@ -563,6 +589,7 @@
       const task = practiceTasks[currentTaskIdx];
       if (task.type === 'meaning') renderPartMeaning(task.data);
       else if (task.type === 'gap') renderPartGap(task.data);
+      else if (task.type === 'match') renderPartMatch(task.data);
     }
 
     function renderPartMeaning(wordObj) {
@@ -647,12 +674,113 @@
       speakJapanese(gapData.fullJa);
     }
 
+    // ==========================================
+    // LOGIC DẠNG BÀI GHÉP CẶP ÂM THANH
+    // ==========================================
+    let matchPairsState = [];
+    let selectedAudioObj = null;
+    let selectedTextObj = null;
+    let solvedMatchCount = 0;
+    let matchHasFailedAny = false;
+
+    function renderPartMatch(wordsList) {
+      document.getElementById('practice-header-title').innerText = "Ghép âm thanh với nghĩa tiếng Việt";
+      document.getElementById('part-quiz-match').classList.remove('hidden');
+
+      matchPairsState = wordsList;
+      selectedAudioObj = null;
+      selectedTextObj = null;
+      solvedMatchCount = 0;
+      matchHasFailedAny = false;
+      document.getElementById('btn-pq3-check').disabled = true;
+
+      const container = document.getElementById('pq3-match-container');
+      container.innerHTML = '';
+
+      let audioCol = [...wordsList].sort(() => Math.random() - 0.5);
+      let textCol = [...wordsList].sort(() => Math.random() - 0.5);
+
+      for (let i = 0; i < wordsList.length; i++) {
+        // Nút loa phát âm từ Kanji
+        const audioBtn = document.createElement('button');
+        const aItem = audioCol[i];
+        audioBtn.id = `match-audio-${aItem.id}`;
+        audioBtn.className = "h-20 bg-white border-2 border-slate-200 rounded-2xl flex items-center justify-center text-emerald-600 text-2xl shadow-sm hover:border-emerald-300 transition";
+        audioBtn.innerHTML = `<i class="fa-solid fa-volume-high"></i>`;
+        audioBtn.onclick = () => {
+          speakJapanese(aItem.kanji);
+          document.querySelectorAll('[id^="match-audio-"]').forEach(el => {
+            if (!el.classList.contains('pointer-events-none')) el.classList.remove('border-emerald-500', 'bg-emerald-50/50');
+          });
+          audioBtn.classList.add('border-emerald-500', 'bg-emerald-50/50');
+          selectedAudioObj = aItem;
+          checkMatchReadyState();
+        };
+
+        // Thẻ hiển thị nghĩa tiếng Việt
+        const textBtn = document.createElement('button');
+        const tItem = textCol[i];
+        textBtn.id = `match-text-${tItem.id}`;
+        textBtn.className = "h-20 px-3 bg-white border-2 border-slate-200 rounded-2xl flex items-center justify-center text-center text-xs font-semibold text-slate-700 shadow-sm hover:border-emerald-300 transition";
+        textBtn.innerText = tItem.meaning;
+        textBtn.onclick = () => {
+          document.querySelectorAll('[id^="match-text-"]').forEach(el => {
+            if (!el.classList.contains('pointer-events-none')) el.classList.remove('border-emerald-500', 'bg-emerald-50/50');
+          });
+          textBtn.classList.add('border-emerald-500', 'bg-emerald-50/50');
+          selectedTextObj = tItem;
+          checkMatchReadyState();
+        };
+
+        container.appendChild(audioBtn);
+        container.appendChild(textBtn);
+      }
+    }
+
+    function checkMatchReadyState() {
+      document.getElementById('btn-pq3-check').disabled = !(selectedAudioObj && selectedTextObj);
+    }
+
+    function checkMatchSelection() {
+      const audioBtn = document.getElementById(`match-audio-${selectedAudioObj.id}`);
+      const textBtn = document.getElementById(`match-text-${selectedTextObj.id}`);
+
+      if (selectedAudioObj.id === selectedTextObj.id) {
+        audioBtn.className = "h-20 bg-emerald-100 border-2 border-emerald-500 text-emerald-700 rounded-2xl flex items-center justify-center text-2xl transition pointer-events-none";
+        textBtn.className = "h-20 px-3 bg-emerald-100 border-2 border-emerald-500 text-emerald-800 font-semibold text-center text-xs rounded-2xl flex items-center justify-center transition pointer-events-none";
+        solvedMatchCount++;
+
+        if (solvedMatchCount === matchPairsState.length) {
+          if (!matchHasFailedAny) correctAnswersCount++;
+          setTimeout(() => {
+            currentTaskIdx++;
+            renderCurrentPracticeTask();
+          }, 600);
+        }
+      } else {
+        matchHasFailedAny = true;
+        audioBtn.classList.add('bg-rose-100', 'border-rose-400', 'text-rose-600');
+        textBtn.classList.add('bg-rose-100', 'border-rose-400', 'text-rose-600');
+
+        setTimeout(() => {
+          audioBtn.classList.remove('bg-rose-100', 'border-rose-400', 'text-rose-600', 'border-emerald-500', 'bg-emerald-50/50');
+          textBtn.classList.remove('bg-rose-100', 'border-rose-400', 'text-rose-600', 'border-emerald-500', 'bg-emerald-50/50');
+        }, 800);
+      }
+
+      selectedAudioObj = null;
+      selectedTextObj = null;
+      document.getElementById('btn-pq3-check').disabled = true;
+    }
+
     function finishAndBackToStages() {
       openLessonStages(selectedLessonId);
     }
 
     window.onload = () => {
-      renderLessonGrid();
+      setTimeout(() => {
+        renderLessonGrid();
+      }, 50);
     };
   </script>
 </body>
