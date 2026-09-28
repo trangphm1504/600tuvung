@@ -7,13 +7,15 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   
+  <!-- Nạp file dữ liệu tách riêng -->
+  <script src="data_toeic.js"></script>
+  
   <!-- Cấu hình Firebase & Đăng nhập Google -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
     import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
     import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-    // Firebase config của bạn
     const firebaseConfig = {
       apiKey: "AIzaSyCizgsPFGkkdbVYl4VAqfggphPvM4l6AnQ",
       authDomain: "tuvung-ba736.firebaseapp.com",
@@ -31,7 +33,6 @@
 
     window.currentUser = null;
 
-    // Bấm nút Đăng nhập Google
     window.loginWithGoogle = async () => {
       try {
         await signInWithPopup(auth, provider);
@@ -41,13 +42,11 @@
       }
     };
 
-    // Bấm Đăng xuất
     window.logoutGoogle = async () => {
       await signOut(auth);
       location.reload();
     };
 
-    // Tự động kiểm tra trạng thái đăng nhập
     onAuthStateChanged(auth, async (user) => {
       window.currentUser = user;
       const loginBtn = document.getElementById('btn-login');
@@ -59,7 +58,6 @@
         if (profile) profile.classList.remove('hidden');
         if (avatar) avatar.src = user.photoURL || 'https://via.placeholder.com/32';
 
-        // Tải số sao và từ đã note từ Cloud về
         try {
           const docRef = doc(db, "users", user.uid);
           const docSnap = await getDoc(docRef);
@@ -75,7 +73,6 @@
             }
             if (typeof renderLessonGrid === 'function') renderLessonGrid();
           } else {
-            // Lần đầu đăng nhập: lưu số sao hiện có lên cloud
             window.syncProgressToCloud();
           }
         } catch (e) {
@@ -87,7 +84,6 @@
       }
     });
 
-    // Tự động đồng bộ số sao lên đám mây
     window.syncProgressToCloud = async () => {
       if (!window.currentUser) return;
       try {
@@ -97,7 +93,6 @@
           notes: window.notedWords,
           updatedAt: new Date().toISOString()
         }, { merge: true });
-        console.log("Đã đồng bộ lên Firebase!");
       } catch (e) {
         console.error("Lỗi lưu đám mây:", e);
       }
@@ -111,37 +106,29 @@
 </head>
 <body class="bg-slate-100 flex justify-center min-h-screen text-slate-800">
 
-  <!-- Mobile Simulator Container -->
   <div class="w-full max-w-md bg-white min-h-screen flex flex-col justify-between shadow-2xl relative overflow-x-hidden">
 
-    <!-- ========================================== -->
-    <!-- MÀN HÌNH 1: DANH SÁCH BÀI HỌC VỚI SAO ĐỘNG -->
-    <!-- ========================================== -->
+    <!-- MÀN HÌNH 1: DANH SÁCH 50 BÀI HỌC -->
     <div id="screen-lessons" class="flex-1 flex flex-col">
       <div class="px-5 pt-8 pb-4 flex items-center justify-between border-b border-slate-100">
-  <!-- Nút nhảy sang trang Tiếng Nhật Daichi -->
-  <a href="japanese.html" class="text-xs bg-red-50 text-red-600 font-bold px-2.5 py-1.5 rounded-full border border-red-200 hover:bg-red-100 transition flex items-center shadow-sm">
-    🇯🇵 Daichi (N4)
-  </a>
-  <div class="flex items-center space-x-1.5 font-bold text-slate-800 text-base">
-    <span>600 TOEIC</span>
-  </div>
+        <a href="japanese.html" class="text-xs bg-red-50 text-red-600 font-bold px-2.5 py-1.5 rounded-full border border-red-200 hover:bg-red-100 transition flex items-center shadow-sm">
+          🇯🇵 Daichi (N4)
+        </a>
+        <div class="flex items-center space-x-1.5 font-bold text-slate-800 text-base">
+          <span>600 TOEIC</span>
+        </div>
         
-        <!-- Khu vực nút Đồng bộ & Tài khoản -->
         <div class="flex items-center space-x-2">
-          <!-- Nút Đồng bộ khi chưa đăng nhập -->
           <button id="btn-login" onclick="loginWithGoogle()" class="text-xs bg-blue-50 text-blue-600 font-bold px-2.5 py-1 rounded-full border border-blue-200 hover:bg-blue-100 transition flex items-center shadow-sm">
             <i class="fa-brands fa-google mr-1"></i> Đồng bộ
           </button>
           
-          <!-- Avatar khi đã đăng nhập -->
-          <div id="user-profile" class="hidden flex items-center space-x-1 cursor-pointer" onclick="if(confirm('Bạn có muốn đăng xuất khỏi tài khoản này?')) logoutGoogle();" title="Bấm để đăng xuất">
+          <div id="user-profile" class="hidden flex items-center space-x-1 cursor-pointer" onclick="if(confirm('Bạn có muốn đăng xuất?')) logoutGoogle();" title="Bấm để đăng xuất">
             <img id="user-avatar" class="w-7 h-7 rounded-full border-2 border-emerald-400 object-cover" src="" alt="avatar">
-            <span class="w-2 h-2 rounded-full bg-emerald-500 inline-block" title="Đang đồng bộ trực tuyến"></span>
+            <span class="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>
           </div>
 
-          <i class="fa-solid fa-magnifying-glass text-slate-500 ml-1"></i>
-          <button onclick="resetAllProgress()" title="Đặt lại tiến độ" class="text-slate-500 hover:text-rose-500"><i class="fa-solid fa-rotate-left"></i></button>
+          <button onclick="resetAllProgress()" title="Đặt lại tiến độ" class="text-slate-500 hover:text-rose-500 ml-1"><i class="fa-solid fa-rotate-left"></i></button>
         </div>
       </div>
 
@@ -156,33 +143,28 @@
             <p class="text-xs text-slate-500 mt-0.5">50 bài học x 12 từ/bài</p>
             <div class="flex items-center space-x-3 mt-2 text-xs font-semibold">
               <span class="text-blue-600 flex items-center"><i class="fa-solid fa-font mr-1"></i> <span id="learned-words-count">0</span>/600 từ</span>
-              <!-- Hiển thị sao thực tế của bạn -->
               <span class="text-amber-500 flex items-center"><i class="fa-solid fa-star mr-1"></i> <span id="total-stars-count">0</span>/150</span>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Lưới bài học dạng card ô số tròn bo góc -->
+      <!-- Lưới bài học 50 cửa -->
       <div class="px-4 flex-1">
         <div class="text-xs font-bold text-blue-500 flex items-center mb-3">
-          <span class="w-2 h-2 rounded-full bg-blue-500 mr-1.5"></span> Danh sách cửa bài học (12 từ/cửa)
+          <span class="w-2 h-2 rounded-full bg-blue-500 mr-1.5"></span> Danh sách 50 cửa bài học (12 từ/cửa)
         </div>
-        <div class="grid grid-cols-5 gap-3" id="lesson-grid">
-          <!-- JS Render các ô bài kèm sao thực tế -->
-        </div>
+        <div class="grid grid-cols-5 gap-3" id="lesson-grid"></div>
       </div>
 
       <div class="p-4">
-        <button onclick="openLesson(0)" class="w-full py-3.5 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-2xl shadow-lg shadow-blue-500/30 transition">
+        <button id="btn-next-lesson-action" onclick="openNextUnfinishedLesson()" class="w-full py-3.5 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-2xl shadow-lg shadow-blue-500/30 transition">
           Bắt đầu cửa tiếp theo
         </button>
       </div>
     </div>
 
-    <!-- ========================================== -->
-    <!-- MÀN HÌNH 2: CHI TIẾT 12 TỪ TRONG BÀI -->
-    <!-- ========================================== -->
+    <!-- MÀN HÌNH 2: CHI TIẾT 12 TỪ -->
     <div id="screen-detail" class="hidden flex-1 flex flex-col bg-white">
       <div class="px-5 pt-8 pb-3 flex items-center border-b border-slate-100">
         <button onclick="showScreen('screen-lessons')" class="text-slate-600 text-lg mr-4">
@@ -192,10 +174,7 @@
       </div>
 
       <div class="px-5 py-3 text-sm text-slate-400 font-medium">Học 12 từ mới</div>
-
-      <div class="flex-1 overflow-y-auto px-5 divide-y divide-slate-100" id="detail-word-list">
-        <!-- 12 từ -->
-      </div>
+      <div class="flex-1 overflow-y-auto px-5 divide-y divide-slate-100" id="detail-word-list"></div>
 
       <div class="p-4 bg-white border-t border-slate-100 grid grid-cols-2 gap-3">
         <button onclick="startLearningMode()" class="py-3 bg-blue-100 hover:bg-blue-200 text-blue-600 font-bold rounded-2xl transition">
@@ -207,9 +186,7 @@
       </div>
     </div>
 
-    <!-- ========================================== -->
-    <!-- MÀN HÌNH 3 & 4: CHẾ ĐỘ HỌC TỪ VỰNG -->
-    <!-- ========================================== -->
+    <!-- MÀN HÌNH 3: HỌC TỪ VỰNG -->
     <div id="screen-study" class="hidden flex-1 flex flex-col justify-between bg-white">
       <div>
         <div class="h-1 bg-slate-100 w-full">
@@ -228,28 +205,26 @@
         <div class="mt-4 pb-6 border-b border-slate-100">
           <div class="flex justify-between items-start">
             <div>
-              <div id="study-ipa" class="text-slate-400 font-mono text-sm mb-1">/əˈbaɪd baɪ/</div>
-              <h1 id="study-word" class="text-4xl font-extrabold text-slate-900 tracking-tight">abide by</h1>
+              <div id="study-ipa" class="text-slate-400 font-mono text-sm mb-1"></div>
+              <h1 id="study-word" class="text-4xl font-extrabold text-slate-900 tracking-tight"></h1>
             </div>
             <button onclick="speakText(currentWord.word)" class="text-blue-500 text-2xl hover:scale-110 active:scale-95 transition p-2">
               <i class="fa-solid fa-volume-high"></i>
             </button>
           </div>
           <div class="mt-3 flex items-center space-x-2">
-            <span id="study-pos" class="text-xs font-semibold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-md">cụm động từ</span>
+            <span id="study-pos" class="text-xs font-semibold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-md"></span>
           </div>
-          <div id="study-meaning" class="hidden mt-3 text-slate-700 font-semibold text-base">
-            tuân theo, chấp hành
-          </div>
+          <div id="study-meaning" class="hidden mt-3 text-slate-700 font-semibold text-base"></div>
         </div>
 
         <div class="mt-6 space-y-6 flex-1">
           <div>
             <div class="flex justify-between items-start">
               <div>
-                <p id="ex1-en" class="text-base text-slate-800 font-medium tracking-wide">Both parties agreed to abide by the contract.</p>
-                <p id="ex1-ipa" class="pinyin-sub mt-0.5">boʊθ ˈpɑrtiz əˈɡrid tu əˈbaɪd baɪ ðə ˈkɑntrækt</p>
-                <p id="ex1-vi" class="hidden text-xs text-slate-500 mt-1.5">Cả hai bên đã đồng ý tuân theo bản hợp đồng.</p>
+                <p id="ex1-en" class="text-base text-slate-800 font-medium tracking-wide"></p>
+                <p id="ex1-ipa" class="pinyin-sub mt-0.5"></p>
+                <p id="ex1-vi" class="hidden text-xs text-slate-500 mt-1.5"></p>
               </div>
               <button onclick="speakText(currentWord.example1.en)" class="text-blue-400 hover:text-blue-600 text-lg ml-3 p-1">
                 <i class="fa-solid fa-volume-high"></i>
@@ -259,11 +234,11 @@
           <div>
             <div class="flex justify-between items-start">
               <div>
-                <p id="ex2-en" class="text-base text-slate-800 font-medium tracking-wide">You must abide by the company rules.</p>
-                <p id="ex2-ipa" class="pinyin-sub mt-0.5">ju mʌst əˈbaɪd baɪ ðə ˈkʌmpəni rulz</p>
-                <p id="ex2-vi" class="hidden text-xs text-slate-500 mt-1.5">Bạn phải tuân theo các quy định của công ty.</p>
+                <p id="ex2-en" class="text-base text-slate-800 font-medium tracking-wide"></p>
+                <p id="ex2-ipa" class="pinyin-sub mt-0.5"></p>
+                <p id="ex2-vi" class="hidden text-xs text-slate-500 mt-1.5"></p>
               </div>
-              <button onclick="speakText(currentWord.example2.en)" class="text-blue-400 hover:text-blue-600 text-lg ml-3 p-1">
+              <button onclick="speakText(currentWord.example2 ? currentWord.example2.en : currentWord.example1.en)" class="text-blue-400 hover:text-blue-600 text-lg ml-3 p-1">
                 <i class="fa-solid fa-volume-high"></i>
               </button>
             </div>
@@ -281,9 +256,7 @@
       </div>
     </div>
 
-    <!-- ========================================== -->
-    <!-- CHẾ ĐỘ LUYỆN TẬP KẾT HỢP LIÊN HOÀN -->
-    <!-- ========================================== -->
+    <!-- MÀN HÌNH 4: LUYỆN TẬP -->
     <div id="screen-practice-wrapper" class="hidden flex-1 flex flex-col justify-between bg-white">
       <div>
         <div class="h-1 bg-slate-100 w-full">
@@ -296,7 +269,7 @@
         </div>
       </div>
 
-      <!-- VÙNG 1: DẠNG CHỌN NGHĨA -->
+      <!-- VÙNG 1: CHỌN NGHĨA -->
       <div id="part-quiz-meaning" class="hidden flex-1 flex flex-col justify-between px-6 py-4">
         <div class="text-center my-auto">
           <div id="pq1-ipa" class="text-sm font-mono text-slate-400 mb-1"></div>
@@ -305,7 +278,7 @@
         <div class="space-y-3 mb-4" id="pq1-options"></div>
       </div>
 
-      <!-- VÙNG 2: DẠNG NGHE ĐIỀN CHỖ TRỐNG -->
+      <!-- VÙNG 2: NGHE ĐIỀN CHỖ TRỐNG -->
       <div id="part-quiz-gap" class="hidden flex-1 flex flex-col justify-between px-6 py-4">
         <div class="flex-1 flex flex-col items-center justify-center">
           <div class="flex items-center justify-center space-x-3 mb-6">
@@ -324,7 +297,7 @@
         <div class="space-y-3 mb-4" id="pq2-options"></div>
       </div>
 
-      <!-- VÙNG 3: DẠNG GHÉP CẶP ÂM THANH -->
+      <!-- VÙNG 3: GHÉP CẶP -->
       <div id="part-quiz-match" class="hidden flex-1 flex flex-col justify-between px-5 py-4">
         <div class="flex-1 flex flex-col justify-center">
           <div class="grid grid-cols-2 gap-3" id="pq3-match-container"></div>
@@ -342,12 +315,7 @@
           <i class="fa-solid fa-trophy"></i>
         </div>
         <h2 class="text-2xl font-black text-slate-900" id="finish-title">Hoàn thành bài tập!</h2>
-        
-        <!-- Sao đạt được -->
-        <div class="flex items-center justify-center space-x-2 my-3 text-3xl" id="finish-stars">
-          <!-- Hiển thị sao đạt được -->
-        </div>
-
+        <div class="flex items-center justify-center space-x-2 my-3 text-3xl" id="finish-stars"></div>
         <p class="text-sm text-slate-500 mt-1" id="finish-score-desc">Độ chính xác: 100%</p>
         <button onclick="finishAndBackToLessons()" class="mt-8 w-full py-3.5 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-2xl shadow-lg transition">
           Xác nhận & Lưu tiến độ
@@ -358,43 +326,16 @@
   </div>
 
   <script>
-    // ==========================================
-    // DỮ LIỆU ĐẦY ĐỦ 12 TỪ BÀI 1 (CONTRACTS) - BARRON'S 600
-    // ==========================================
-    const TOEIC_LESSONS = [
-      {
-        id: 1,
-        title: "Contracts",
-        words: [
-          { id: 101, word: "abide by", ipa: "/əˈbaɪd baɪ/", pos: "cụm động từ", meaning: "tuân theo, chấp hành", example1: { en: "Both parties agreed to abide by the contract.", ipa: "boʊθ ˈpɑrtiz əˈɡrid tu əˈbaɪd baɪ ðə ˈkɑntrækt", vi: "Cả hai bên đã đồng ý tuân theo bản hợp đồng." }, example2: { en: "You must abide by the company rules.", ipa: "ju mʌst əˈbaɪd baɪ ðə ˈkʌmpəni rulz", vi: "Bạn phải tuân theo các quy định của công ty." } },
-          { id: 102, word: "agreement", ipa: "/əˈɡriː.mənt/", pos: "danh từ", meaning: "sự thỏa thuận, hợp đồng", example1: { en: "They reached an agreement after three hours.", ipa: "ðeɪ riʧt ən əˈɡrimənt ˈæftər θri ˈaʊərz", vi: "Họ đã đạt được một sự thỏa thuận sau 3 tiếng." }, example2: { en: "The agreement was signed yesterday.", ipa: "ði əˈɡrimənt wʌz saɪnd ˈjɛstərˌdeɪ", vi: "Bản thỏa thuận đã được ký kết ngày hôm qua." } },
-          { id: 103, word: "assurance", ipa: "/əˈʃʊr.əns/", pos: "danh từ", meaning: "sự đảm bảo, cam đoan", example1: { en: "He gave his assurance that the work will be done.", ipa: "hi ɡeɪv hɪz əˈʃʊrəns ðæt ðə wɜrk wɪl bi dʌn", vi: "Anh ấy cam đoan rằng công việc sẽ được hoàn tất." }, example2: { en: "We need an assurance of high quality.", ipa: "wi nid ən əˈʃʊrəns ʌv haɪ ˈkwɑləti", vi: "Chúng tôi cần một sự cam kết về chất lượng cao." } },
-          { id: 104, word: "cancellation", ipa: "/ˌkæn.səlˈeɪ.ʃən/", pos: "danh từ", meaning: "sự hủy bỏ, bãi bỏ", example1: { en: "The clause requires penalty for late cancellation.", ipa: "ðə klɔz rɪˈkwaɪərz ˈpɛnəlti fɔr leɪt ˌkænsəˈleɪʃən", vi: "Điều khoản yêu cầu tiền phạt nếu hủy trễ." }, example2: { en: "The sudden cancellation caused many issues.", ipa: "ðə ˈsʌdən ˌkænsəˈleɪʃən kɔzd ˈmɛni ˈɪʃuz", vi: "Việc hủy đột ngột đã gây ra nhiều vấn đề." } },
-          { id: 105, word: "determine", ipa: "/dɪˈtɜː.mɪn/", pos: "động từ", meaning: "xác định, định rõ", example1: { en: "We must determine the exact costs first.", ipa: "wi mʌst dɪˈtɜrmən ði ɪɡˈzækt kɑsts fɜrst", vi: "Trước tiên chúng ta phải xác định chi phí chính xác." }, example2: { en: "The contract will determine your responsibilities.", ipa: "ðə ˈkɑntrækt wɪl dɪˈtɜrmən jʊər rɪˌspɑnsəˈbɪlətiz", vi: "Bản hợp đồng sẽ định rõ trách nhiệm của bạn." } },
-          { id: 106, word: "engage", ipa: "/ɪnˈɡeɪdʒ/", pos: "động từ", meaning: "tham gia, thuê mướn", example1: { en: "We engaged a lawyer to review the contract.", ipa: "wi ɛnˈɡeɪʤd ə ˈlɔjər tu ˌriˈvju ðə ˈkɑntrækt", vi: "Chúng tôi đã thuê một luật sư để xem lại hợp đồng." }, example2: { en: "Both companies engaged in trade talks.", ipa: "boʊθ ˈkʌmpəniz ɛnˈɡeɪʤd ɪn treɪd tɔks", vi: "Cả hai công ty đều đã tham gia đàm phán thương mại." } },
-          { id: 107, word: "establish", ipa: "/ɪˈstæb.lɪʃ/", pos: "động từ", meaning: "thiết lập, thành lập", example1: { en: "They established new partnership rules.", ipa: "ðeɪ ɪˈstæblɪʃt nu ˈpɑrtnərˌʃɪp rulz", vi: "Họ đã thiết lập các quy tắc hợp tác mới." }, example2: { en: "The company was established ten years ago.", ipa: "ðə ˈkʌmpəni wʌz ɪˈstæblɪʃt tɛn jɪrz əˈɡoʊ", vi: "Công ty đã được thành lập mười năm trước." } },
-          { id: 108, word: "obligate", ipa: "/ˈɒb.lɪ.ɡeɪt/", pos: "động từ", meaning: "bắt buộc, ép buộc theo luật", example1: { en: "The contract obligates us to finish on time.", ipa: "ðə ˈkɑntrækt ˈɑbləˌɡeɪts ʌs tu ˈfɪnɪʃ ɑn taɪm", vi: "Hợp đồng bắt buộc chúng tôi phải hoàn thành đúng hạn." }, example2: { en: "You are not obligated to sign this document.", ipa: "ju ɑr nɑt ˈɑbləˌɡeɪtɪd tu saɪn ðɪs ˈdɑkjəmənt", vi: "Bạn không bắt buộc phải ký vào tài liệu này." } },
-          { id: 109, word: "party", ipa: "/ˈpɑː.ti/", pos: "danh từ", meaning: "bên tham gia (hợp đồng)", example1: { en: "Each party must agree on all terms.", ipa: "iʧ ˈpɑrti mʌst əˈɡri ɑn ɔl tɜrmz", vi: "Mỗi bên tham gia phải đồng ý với mọi điều khoản." }, example2: { en: "The third party refused the contract request.", ipa: "ðə θɜrd ˈpɑrti rəˈfjuzd ðə ˈkɑntrækt rɪˈkwɛst", vi: "Bên thứ ba đã từ chối yêu cầu của hợp đồng." } },
-          { id: 110, word: "provision", ipa: "/prəˈvɪʒ.ən/", pos: "danh từ", meaning: "điều khoản hợp đồng", example1: { en: "The contract has a special provision for delays.", ipa: "ðə ˈkɑntrækt hæz ə ˈspɛʃəl prəˈvɪʒən fɔr dɪˈleɪz", vi: "Hợp đồng có một điều khoản đặc biệt về sự chậm trễ." }, example2: { en: "Please read the payment provision carefully.", ipa: "pliz rid ðə ˈpeɪmənt prəˈvɪʒən ˈkɛrfəli", vi: "Vui lòng đọc kỹ điều khoản thanh toán." } },
-          { id: 111, word: "resolve", ipa: "/rɪˈzɒlv/", pos: "động từ", meaning: "giải quyết, dàn xếp", example1: { en: "We must resolve the dispute peacefully.", ipa: "wi mʌst riˈzɑlv ðə dɪˈspjut ˈpisfəli", vi: "Chúng ta phải giải quyết tranh chấp một cách hòa bình." }, example2: { en: "The manager resolved the contract issue quickly.", ipa: "ðə ˈmænəʤər riˈzɑlvd ðə ˈkɑntrækt ˈɪʃu ˈkwɪkli", vi: "Người quản lý đã giải quyết vấn đề hợp đồng rất nhanh." } },
-          { id: 112, word: "specific", ipa: "/spəˈsɪf.ɪk/", pos: "tính từ", meaning: "cụ thể, chi tiết", example1: { en: "The contract gives specific details about pay.", ipa: "ðə ˈkɑntrækt ɡɪvz spəˈsɪfɪk dɪˈteɪlz əˈbaʊt peɪ", vi: "Hợp đồng đưa ra các chi tiết cụ thể về mức lương." }, example2: { en: "We need specific instructions for this project.", ipa: "wi nid spəˈsɪfɪk ɪnˈstrʌkʃənz fɔr ðɪs ˈprɑʤɛkt", vi: "Chúng tôi cần những hướng dẫn cụ thể cho dự án này." } }
-        ]
-      }
-    ];
+    // Dữ liệu TOEIC nạp trực tiếp từ file data_toeic.js
+    const ALL_LESSONS = window.TOEIC_LESSONS || [];
 
-    // ==========================================
-    // LOGIC TIẾN ĐỘ & SAO (DYNAMIC STARS STORAGE)
-    // ==========================================
     window.lessonProgress = JSON.parse(localStorage.getItem('toeic_lesson_progress') || '{}');
     window.notedWords = JSON.parse(localStorage.getItem('toeic_notes') || '[]');
 
     function saveProgress() {
       localStorage.setItem('toeic_lesson_progress', JSON.stringify(window.lessonProgress));
       renderLessonGrid();
-      // Tự động đẩy lên Firebase nếu đã đăng nhập
-      if (window.syncProgressToCloud) {
-        window.syncProgressToCloud();
-      }
+      if (window.syncProgressToCloud) window.syncProgressToCloud();
     }
 
     function resetAllProgress() {
@@ -427,9 +368,7 @@
       document.getElementById(screenId).classList.remove('hidden');
     }
 
-    // ==========================================
-    // 1. RENDER GRID VỚI SAO VÀNG / XÁM DỰA VÀO KẾT QUẢ THẬT
-    // ==========================================
+    // Render danh sách 50 cửa bài học
     window.renderLessonGrid = function() {
       const container = document.getElementById('lesson-grid');
       container.innerHTML = '';
@@ -437,18 +376,14 @@
       let totalStars = 0;
       let learnedLessonsCount = 0;
 
-      for (let i = 1; i <= 15; i++) {
+      for (let i = 1; i <= 50; i++) {
         const p = window.lessonProgress[i] || { stars: 0, learned: false };
         totalStars += p.stars;
         if (p.learned) learnedLessonsCount++;
 
         let starsHtml = '';
         for (let s = 1; s <= 3; s++) {
-          if (s <= p.stars) {
-            starsHtml += `<i class="fa-solid fa-star text-amber-400"></i>`;
-          } else {
-            starsHtml += `<i class="fa-solid fa-star text-slate-200"></i>`;
-          }
+          starsHtml += s <= p.stars ? `<i class="fa-solid fa-star text-amber-400"></i>` : `<i class="fa-solid fa-star text-slate-200"></i>`;
         }
 
         const btn = document.createElement('button');
@@ -458,11 +393,10 @@
         btn.innerHTML = `
           <div class="w-full flex justify-end"><span class="text-[9px] font-bold bg-blue-500 text-white rounded px-1">K</span></div>
           <span class="text-lg font-bold text-blue-600">${i}</span>
-          <div class="text-[9px] flex space-x-0.5">
-            ${starsHtml}
-          </div>
+          <div class="text-[9px] flex space-x-0.5">${starsHtml}</div>
         `;
-        btn.onclick = () => openLesson(0);
+        // Truyền chính xác chỉ số index bài tương ứng (i - 1)
+        btn.onclick = () => openLesson(i - 1);
         container.appendChild(btn);
       }
 
@@ -470,13 +404,25 @@
       document.getElementById('learned-words-count').innerText = learnedLessonsCount * 12;
     };
 
-    // ==========================================
-    // 2. MÀN HÌNH 2: 12 TỪ TRONG BÀI
-    // ==========================================
+    function openNextUnfinishedLesson() {
+      for (let i = 1; i <= 50; i++) {
+        const p = window.lessonProgress[i];
+        if (!p || p.stars === 0) {
+          openLesson(i - 1);
+          return;
+        }
+      }
+      openLesson(0);
+    }
+
     function openLesson(lessonIndex) {
+      if (!ALL_LESSONS[lessonIndex]) {
+        alert("Đang tải dữ liệu bài học...");
+        return;
+      }
       currentLessonIdx = lessonIndex;
-      const lesson = TOEIC_LESSONS[lessonIndex];
-      document.getElementById('detail-title').innerText = `Cửa số ${lesson.id}`;
+      const lesson = ALL_LESSONS[lessonIndex];
+      document.getElementById('detail-title').innerText = `Cửa số ${lesson.id} - ${lesson.title}`;
 
       const listContainer = document.getElementById('detail-word-list');
       listContainer.innerHTML = '';
@@ -495,9 +441,6 @@
       showScreen('screen-detail');
     }
 
-    // ==========================================
-    // 3. MÀN HÌNH 3 & 4: HỌC TỪ VỰNG
-    // ==========================================
     function startLearningMode() {
       currentWordIdx = 0;
       loadStudyWord();
@@ -505,7 +448,7 @@
     }
 
     function loadStudyWord() {
-      const words = TOEIC_LESSONS[currentLessonIdx].words;
+      const words = ALL_LESSONS[currentLessonIdx].words;
       currentWord = words[currentWordIdx];
 
       const percent = ((currentWordIdx + 1) / words.length) * 100;
@@ -518,13 +461,14 @@
       document.getElementById('study-meaning').classList.add('hidden');
 
       document.getElementById('ex1-en').innerText = currentWord.example1.en;
-      document.getElementById('ex1-ipa').innerText = currentWord.example1.ipa;
+      document.getElementById('ex1-ipa').innerText = currentWord.example1.ipa || "";
       document.getElementById('ex1-vi').innerText = currentWord.example1.vi;
       document.getElementById('ex1-vi').classList.add('hidden');
 
-      document.getElementById('ex2-en').innerText = currentWord.example2.en;
-      document.getElementById('ex2-ipa').innerText = currentWord.example2.ipa;
-      document.getElementById('ex2-vi').innerText = currentWord.example2.vi;
+      const ex2 = currentWord.example2 || currentWord.example1;
+      document.getElementById('ex2-en').innerText = ex2.en;
+      document.getElementById('ex2-ipa').innerText = ex2.ipa || "";
+      document.getElementById('ex2-vi').innerText = ex2.vi;
       document.getElementById('ex2-vi').classList.add('hidden');
 
       document.getElementById('btn-show-meaning').classList.remove('hidden');
@@ -543,20 +487,17 @@
     }
 
     function nextStudyWord() {
-      const words = TOEIC_LESSONS[currentLessonIdx].words;
+      const words = ALL_LESSONS[currentLessonIdx].words;
       if (currentWordIdx < words.length - 1) {
         currentWordIdx++;
         loadStudyWord();
       } else {
-        const lessonNum = TOEIC_LESSONS[currentLessonIdx].id;
+        const lessonNum = ALL_LESSONS[currentLessonIdx].id;
         if (!window.lessonProgress[lessonNum]) window.lessonProgress[lessonNum] = { stars: 0, learned: false };
         window.lessonProgress[lessonNum].learned = true;
-        if (window.lessonProgress[lessonNum].stars < 1) {
-          window.lessonProgress[lessonNum].stars = 1;
-        }
+        if (window.lessonProgress[lessonNum].stars < 1) window.lessonProgress[lessonNum].stars = 1;
         saveProgress();
-
-        alert("Bạn đã hoàn thành xem qua 12 từ vựng! Đạt được ⭐ 1 SAO. Giờ hãy vào Luyện tập để chinh phục trọn vẹn 3 sao!");
+        alert("Đã xem qua 12 từ! Đạt ⭐ 1 SAO. Tiếp tục luyện tập để đạt 3 sao!");
         startCombinedPractice();
       }
     }
@@ -583,26 +524,19 @@
       speakText(currentWord.word);
     }
 
-    // ==========================================
-    // 4. LUYỆN TẬP KẾT HỢP LIÊN HOÀN & CHẤM ĐIỂM
-    // ==========================================
     let practiceTasks = [];
     let currentTaskIdx = 0;
     let correctAnswersCount = 0;
     let totalQuestionsCount = 0;
 
     function startCombinedPractice() {
-      const words = TOEIC_LESSONS[currentLessonIdx].words;
+      const words = ALL_LESSONS[currentLessonIdx].words;
       practiceTasks = [];
       correctAnswersCount = 0;
 
-      // 1. Tạo 4 bài Chọn nghĩa
       const shuffledForMeaning = [...words].sort(() => Math.random() - 0.5).slice(0, 4);
-      shuffledForMeaning.forEach(w => {
-        practiceTasks.push({ type: 'meaning', data: w });
-      });
+      shuffledForMeaning.forEach(w => practiceTasks.push({ type: 'meaning', data: w }));
 
-      // 2. Tạo 3 bài Nghe điền từ vào chỗ trống
       const shuffledForGap = [...words].sort(() => Math.random() - 0.5).slice(0, 3);
       shuffledForGap.forEach(w => {
         practiceTasks.push({
@@ -612,17 +546,13 @@
             ipa: w.ipa,
             fullSentence: w.example1.en,
             gapSentence: w.example1.en.replace(new RegExp(`\\b${w.word}\\b`, 'i'), '_______'),
-            sentenceIpa: w.example1.ipa.replace(new RegExp(w.ipa.replace(/[\/]/g, ''), 'i'), '_____')
+            sentenceIpa: w.example1.ipa ? w.example1.ipa.replace(new RegExp(w.ipa.replace(/[\/]/g, ''), 'i'), '_____') : ""
           }
         });
       });
 
-      // 3. Tạo 1 bài Ghép cặp âm thanh gồm 4 từ
       const shuffledForMatch = [...words].sort(() => Math.random() - 0.5).slice(0, 4);
-      practiceTasks.push({
-        type: 'match',
-        data: shuffledForMatch
-      });
+      practiceTasks.push({ type: 'match', data: shuffledForMatch });
 
       practiceTasks.sort(() => Math.random() - 0.5);
       totalQuestionsCount = practiceTasks.length;
@@ -640,14 +570,9 @@
 
       if (currentTaskIdx >= practiceTasks.length) {
         const percent = Math.round((correctAnswersCount / totalQuestionsCount) * 100);
-        let awardedStars = 1;
-        if (percent >= 85) {
-          awardedStars = 3;
-        } else if (percent >= 60) {
-          awardedStars = 2;
-        }
+        let awardedStars = percent >= 85 ? 3 : (percent >= 60 ? 2 : 1);
 
-        const lessonNum = TOEIC_LESSONS[currentLessonIdx].id;
+        const lessonNum = ALL_LESSONS[currentLessonIdx].id;
         if (!window.lessonProgress[lessonNum]) window.lessonProgress[lessonNum] = { stars: 0, learned: true };
         if (awardedStars > window.lessonProgress[lessonNum].stars) {
           window.lessonProgress[lessonNum].stars = awardedStars;
@@ -656,8 +581,7 @@
 
         let starIcons = '';
         for (let s = 1; s <= 3; s++) {
-          if (s <= awardedStars) starIcons += `<i class="fa-solid fa-star text-amber-400"></i>`;
-          else starIcons += `<i class="fa-solid fa-star text-slate-200"></i>`;
+          starIcons += s <= awardedStars ? `<i class="fa-solid fa-star text-amber-400"></i>` : `<i class="fa-solid fa-star text-slate-200"></i>`;
         }
         document.getElementById('finish-stars').innerHTML = starIcons;
         document.getElementById('finish-score-desc').innerText = `Chính xác ${correctAnswersCount}/${totalQuestionsCount} câu (${percent}%)`;
@@ -683,11 +607,10 @@
     function renderPartMeaning(wordObj) {
       document.getElementById('practice-header-title').innerText = "Chọn nghĩa của từ";
       document.getElementById('part-quiz-meaning').classList.remove('hidden');
-
       document.getElementById('pq1-word').innerText = wordObj.word;
       document.getElementById('pq1-ipa').innerText = wordObj.ipa;
 
-      const allWords = TOEIC_LESSONS[currentLessonIdx].words;
+      const allWords = ALL_LESSONS[currentLessonIdx].words;
       let options = [wordObj.meaning];
       while (options.length < 4) {
         const randomM = allWords[Math.floor(Math.random() * allWords.length)].meaning;
@@ -720,7 +643,6 @@
         };
         container.appendChild(btn);
       });
-
       speakText(wordObj.word);
     }
 
@@ -729,11 +651,10 @@
       currentGapTaskData = gapData;
       document.getElementById('practice-header-title').innerText = "Nghe âm thanh, điền từ vào chỗ trống";
       document.getElementById('part-quiz-gap').classList.remove('hidden');
-
       document.getElementById('pq2-ipa').innerText = gapData.sentenceIpa;
       document.getElementById('pq2-sentence').innerHTML = gapData.gapSentence.replace('_______', '<span class="inline-block border-b-2 border-slate-700 w-24 mx-1"></span>');
 
-      const allWords = TOEIC_LESSONS[currentLessonIdx].words;
+      const allWords = ALL_LESSONS[currentLessonIdx].words;
       let options = [{ word: gapData.word, ipa: gapData.ipa }];
       while (options.length < 4) {
         const rand = allWords[Math.floor(Math.random() * allWords.length)];
@@ -774,7 +695,6 @@
         };
         container.appendChild(btn);
       });
-
       speakText(gapData.fullSentence);
     }
 
@@ -789,7 +709,7 @@
     let matchHasFailedAny = false;
 
     function renderPartMatch(wordsList) {
-      document.getElementById('practice-header-title').innerText = "Ghép cặp đoạn âm thanh với dịch nghĩa";
+      document.getElementById('practice-header-title').innerText = "Ghép cặp âm thanh với dịch nghĩa";
       document.getElementById('part-quiz-match').classList.remove('hidden');
 
       matchPairsState = wordsList;
