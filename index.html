@@ -7,7 +7,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   
-  <!-- Nạp file dữ liệu tách riêng -->
+  <!-- Nạp file dữ liệu TOEIC -->
   <script src="data_toeic.js"></script>
   
   <!-- Cấu hình Firebase & Đăng nhập Google -->
@@ -110,15 +110,22 @@
 
     <!-- MÀN HÌNH 1: DANH SÁCH 50 BÀI HỌC -->
     <div id="screen-lessons" class="flex-1 flex flex-col">
-      <div class="px-5 pt-8 pb-4 flex items-center justify-between border-b border-slate-100">
-        <a href="japanese.html" class="text-xs bg-red-50 text-red-600 font-bold px-2.5 py-1.5 rounded-full border border-red-200 hover:bg-red-100 transition flex items-center shadow-sm">
-          🇯🇵 Daichi (N4)
-        </a>
-        <div class="flex items-center space-x-1.5 font-bold text-slate-800 text-base">
+      <div class="px-3 pt-8 pb-4 flex items-center justify-between border-b border-slate-100">
+        <!-- Chuyển đổi nhanh giữa 3 môn -->
+        <div class="flex items-center space-x-1">
+          <a href="japanese.html" class="text-[11px] bg-red-50 text-red-600 font-bold px-2 py-1 rounded-lg border border-red-200 hover:bg-red-100 transition shadow-sm">
+            N4 Daichi
+          </a>
+          <a href="chukyu.html" class="text-[11px] bg-emerald-50 text-emerald-700 font-bold px-2 py-1 rounded-lg border border-emerald-200 hover:bg-emerald-100 transition shadow-sm">
+            N3 中級
+          </a>
+        </div>
+        
+        <div class="font-bold text-slate-800 text-sm">
           <span>600 TOEIC</span>
         </div>
         
-        <div class="flex items-center space-x-2">
+        <div class="flex items-center space-x-1.5">
           <button id="btn-login" onclick="loginWithGoogle()" class="text-xs bg-blue-50 text-blue-600 font-bold px-2.5 py-1 rounded-full border border-blue-200 hover:bg-blue-100 transition flex items-center shadow-sm">
             <i class="fa-brands fa-google mr-1"></i> Đồng bộ
           </button>
@@ -128,7 +135,7 @@
             <span class="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>
           </div>
 
-          <button onclick="resetAllProgress()" title="Đặt lại tiến độ" class="text-slate-500 hover:text-rose-500 ml-1"><i class="fa-solid fa-rotate-left"></i></button>
+          <button onclick="resetAllProgress()" title="Đặt lại tiến độ" class="text-slate-400 hover:text-rose-500 ml-1"><i class="fa-solid fa-rotate-left"></i></button>
         </div>
       </div>
 
@@ -269,7 +276,6 @@
         </div>
       </div>
 
-      <!-- VÙNG 1: CHỌN NGHĨA -->
       <div id="part-quiz-meaning" class="hidden flex-1 flex flex-col justify-between px-6 py-4">
         <div class="text-center my-auto">
           <div id="pq1-ipa" class="text-sm font-mono text-slate-400 mb-1"></div>
@@ -278,7 +284,6 @@
         <div class="space-y-3 mb-4" id="pq1-options"></div>
       </div>
 
-      <!-- VÙNG 2: NGHE ĐIỀN CHỖ TRỐNG -->
       <div id="part-quiz-gap" class="hidden flex-1 flex flex-col justify-between px-6 py-4">
         <div class="flex-1 flex flex-col items-center justify-center">
           <div class="flex items-center justify-center space-x-3 mb-6">
@@ -297,7 +302,6 @@
         <div class="space-y-3 mb-4" id="pq2-options"></div>
       </div>
 
-      <!-- VÙNG 3: GHÉP CẶP -->
       <div id="part-quiz-match" class="hidden flex-1 flex flex-col justify-between px-5 py-4">
         <div class="flex-1 flex flex-col justify-center">
           <div class="grid grid-cols-2 gap-3" id="pq3-match-container"></div>
@@ -309,7 +313,6 @@
         </div>
       </div>
 
-      <!-- VÙNG TỔNG KẾT VÀ TÍNH SAO -->
       <div id="part-quiz-finish" class="hidden flex-1 flex flex-col items-center justify-center p-8 text-center">
         <div class="w-24 h-24 bg-amber-100 text-amber-500 rounded-full flex items-center justify-center text-4xl shadow-inner mb-4">
           <i class="fa-solid fa-trophy"></i>
@@ -326,8 +329,10 @@
   </div>
 
   <script>
-    // Dữ liệu TOEIC nạp trực tiếp từ file data_toeic.js
-    const ALL_LESSONS = window.TOEIC_LESSONS || [];
+    // Hàm lấy danh sách bài học động trực tiếp từ window.TOEIC_LESSONS
+    function getToeicLessons() {
+      return window.TOEIC_LESSONS || [];
+    }
 
     window.lessonProgress = JSON.parse(localStorage.getItem('toeic_lesson_progress') || '{}');
     window.notedWords = JSON.parse(localStorage.getItem('toeic_notes') || '[]');
@@ -368,26 +373,31 @@
       document.getElementById(screenId).classList.remove('hidden');
     }
 
-    // Render danh sách 50 cửa bài học
     window.renderLessonGrid = function() {
       const container = document.getElementById('lesson-grid');
+      if (!container) return;
       container.innerHTML = '';
       
       let totalStars = 0;
       let learnedLessonsCount = 0;
 
       for (let i = 1; i <= 50; i++) {
-        const p = window.lessonProgress[i] || { stars: 0, learned: false };
-        totalStars += p.stars;
+        const p = (window.lessonProgress && window.lessonProgress[i]) 
+                  ? window.lessonProgress[i] 
+                  : { stars: 0, learned: false };
+
+        totalStars += (p.stars || 0);
         if (p.learned) learnedLessonsCount++;
 
         let starsHtml = '';
         for (let s = 1; s <= 3; s++) {
-          starsHtml += s <= p.stars ? `<i class="fa-solid fa-star text-amber-400"></i>` : `<i class="fa-solid fa-star text-slate-200"></i>`;
+          starsHtml += (s <= (p.stars || 0)) 
+            ? `<i class="fa-solid fa-star text-amber-400"></i>` 
+            : `<i class="fa-solid fa-star text-slate-200"></i>`;
         }
 
         const btn = document.createElement('button');
-        const borderClass = p.stars > 0 ? "border-blue-400 shadow-sm" : "border-slate-200 opacity-90";
+        const borderClass = (p.stars > 0) ? "border-blue-400 shadow-sm" : "border-slate-200 opacity-90";
         
         btn.className = `flex flex-col items-center justify-between p-2.5 rounded-2xl border-2 ${borderClass} bg-white hover:border-blue-400 active:scale-95 transition h-20`;
         btn.innerHTML = `
@@ -395,13 +405,14 @@
           <span class="text-lg font-bold text-blue-600">${i}</span>
           <div class="text-[9px] flex space-x-0.5">${starsHtml}</div>
         `;
-        // Truyền chính xác chỉ số index bài tương ứng (i - 1)
         btn.onclick = () => openLesson(i - 1);
         container.appendChild(btn);
       }
 
-      document.getElementById('total-stars-count').innerText = totalStars;
-      document.getElementById('learned-words-count').innerText = learnedLessonsCount * 12;
+      const totalStarsEl = document.getElementById('total-stars-count');
+      const learnedWordsEl = document.getElementById('learned-words-count');
+      if (totalStarsEl) totalStarsEl.innerText = totalStars;
+      if (learnedWordsEl) learnedWordsEl.innerText = learnedLessonsCount * 12;
     };
 
     function openNextUnfinishedLesson() {
@@ -416,12 +427,13 @@
     }
 
     function openLesson(lessonIndex) {
-      if (!ALL_LESSONS[lessonIndex]) {
-        alert("Đang tải dữ liệu bài học...");
+      const lessons = getToeicLessons();
+      if (!lessons[lessonIndex]) {
+        alert("Đang nạp dữ liệu bài học, vui lòng đợi 1 giây rồi thử lại!");
         return;
       }
       currentLessonIdx = lessonIndex;
-      const lesson = ALL_LESSONS[lessonIndex];
+      const lesson = lessons[lessonIndex];
       document.getElementById('detail-title').innerText = `Cửa số ${lesson.id} - ${lesson.title}`;
 
       const listContainer = document.getElementById('detail-word-list');
@@ -448,7 +460,8 @@
     }
 
     function loadStudyWord() {
-      const words = ALL_LESSONS[currentLessonIdx].words;
+      const lessons = getToeicLessons();
+      const words = lessons[currentLessonIdx].words;
       currentWord = words[currentWordIdx];
 
       const percent = ((currentWordIdx + 1) / words.length) * 100;
@@ -487,12 +500,13 @@
     }
 
     function nextStudyWord() {
-      const words = ALL_LESSONS[currentLessonIdx].words;
+      const lessons = getToeicLessons();
+      const words = lessons[currentLessonIdx].words;
       if (currentWordIdx < words.length - 1) {
         currentWordIdx++;
         loadStudyWord();
       } else {
-        const lessonNum = ALL_LESSONS[currentLessonIdx].id;
+        const lessonNum = lessons[currentLessonIdx].id;
         if (!window.lessonProgress[lessonNum]) window.lessonProgress[lessonNum] = { stars: 0, learned: false };
         window.lessonProgress[lessonNum].learned = true;
         if (window.lessonProgress[lessonNum].stars < 1) window.lessonProgress[lessonNum].stars = 1;
@@ -530,7 +544,8 @@
     let totalQuestionsCount = 0;
 
     function startCombinedPractice() {
-      const words = ALL_LESSONS[currentLessonIdx].words;
+      const lessons = getToeicLessons();
+      const words = lessons[currentLessonIdx].words;
       practiceTasks = [];
       correctAnswersCount = 0;
 
@@ -572,7 +587,8 @@
         const percent = Math.round((correctAnswersCount / totalQuestionsCount) * 100);
         let awardedStars = percent >= 85 ? 3 : (percent >= 60 ? 2 : 1);
 
-        const lessonNum = ALL_LESSONS[currentLessonIdx].id;
+        const lessons = getToeicLessons();
+        const lessonNum = lessons[currentLessonIdx].id;
         if (!window.lessonProgress[lessonNum]) window.lessonProgress[lessonNum] = { stars: 0, learned: true };
         if (awardedStars > window.lessonProgress[lessonNum].stars) {
           window.lessonProgress[lessonNum].stars = awardedStars;
@@ -610,7 +626,8 @@
       document.getElementById('pq1-word').innerText = wordObj.word;
       document.getElementById('pq1-ipa').innerText = wordObj.ipa;
 
-      const allWords = ALL_LESSONS[currentLessonIdx].words;
+      const lessons = getToeicLessons();
+      const allWords = lessons[currentLessonIdx].words;
       let options = [wordObj.meaning];
       while (options.length < 4) {
         const randomM = allWords[Math.floor(Math.random() * allWords.length)].meaning;
@@ -654,7 +671,8 @@
       document.getElementById('pq2-ipa').innerText = gapData.sentenceIpa;
       document.getElementById('pq2-sentence').innerHTML = gapData.gapSentence.replace('_______', '<span class="inline-block border-b-2 border-slate-700 w-24 mx-1"></span>');
 
-      const allWords = ALL_LESSONS[currentLessonIdx].words;
+      const lessons = getToeicLessons();
+      const allWords = lessons[currentLessonIdx].words;
       let options = [{ word: gapData.word, ipa: gapData.ipa }];
       while (options.length < 4) {
         const rand = allWords[Math.floor(Math.random() * allWords.length)];
@@ -801,7 +819,10 @@
     }
 
     window.onload = () => {
-      renderLessonGrid();
+      // Đợi nhẹ 50ms để data_toeic.js load hoàn tất
+      setTimeout(() => {
+        renderLessonGrid();
+      }, 50);
     };
   </script>
 </body>

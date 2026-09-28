@@ -297,7 +297,9 @@
 
   <script>
     // Nạp mảng dữ liệu từ file data_chukyu.js
-    const CHUKYU_LESSONS = window.CHUKYU_LESSONS || [];
+    function getChukyuLessons() {
+    return window.CHUKYU_LESSONS || [];
+    }   
 
     const WORDS_PER_STAGE = 15;
     window.chukyuProgress = JSON.parse(localStorage.getItem('chukyu_stage_progress') || '{}');
@@ -375,7 +377,7 @@
 
     function openLessonStages(lessonId) {
       selectedLessonId = lessonId;
-      const lesson = CHUKYU_LESSONS.find(l => l.id === lessonId);
+      const lesson = getChukyuLessons().find(l => l.id === lessonId);
       if (!lesson) {
         alert("Dữ liệu bài này đang được cập nhật!");
         return;
